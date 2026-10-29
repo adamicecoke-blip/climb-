@@ -103,3 +103,36 @@ def test_story_end_to_end(tmp_path, monkeypatch, landscape_video):
         info = probe(out / result["video"])
         assert (info["width"], info["height"]) == (1080, 1920)
         assert 6 <= info["duration"] <= 7
+
+
+def test_web_app_library(tmp_path, monkeypatch, landscape_video):
+    import importlib
+    import time
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("CLIPFORGE_HOME", str(tmp_path))
+    monkeypatch.setattr(pipeline, "transcribe", lambda wav, model=None: fake_transcript())
+    from clipforge import server
+    server = importlib.reload(server)
+    c = TestClient(server.app)
+
+    assert c.get("/").status_code == 200
+    assert c.get("/sw.js").headers["content-type"].startswith("text/javascript")
+    assert c.get("/static/manifest.webmanifest").json()["display"] == "standalone"
+    assert c.get("/api/library").json() == []
+
+    with landscape_video.open("rb") as f:
+        job = c.post("/api/clip", files={"file": ("talk.mp4", f, "video/mp4")},
+                     data={"num_clips": "1", "min_len": "10", "max_len": "20"}).json()
+    while (s := c.get(f"/api/jobs/{job['id']}").json())["status"] in ("queued", "running"):
+        time.sleep(0.5)
+    assert s["status"] == "done", s["error"]
+
+    lib = c.get("/api/library").json()
+    assert [p["id"] for p in lib] == [job["id"]] and lib[0]["count"] == 1
+    proj = c.get(f"/api/library/{job['id']}").json()
+    assert c.get(f"/files/{job['id']}/{proj['result']['clips'][0]['video']}").status_code == 200
+
+    assert c.get("/api/library/..%2F..").status_code == 404
+    assert c.delete(f"/api/library/{job['id']}").status_code == 200
+    assert c.get("/api/library").json() == []

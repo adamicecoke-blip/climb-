@@ -1,0 +1,21 @@
+{
+  "name": "ClipForge",
+  "short_name": "ClipForge",
+  "description": "Turn long videos into viral shorts and make AI story videos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
+  "icons": [
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "New clips", "url": "/#clip"},
+    {"name": "New story video", "url": "/#story"},
+    {"name": "Library", "url": "/#library"}
+  ]
+}

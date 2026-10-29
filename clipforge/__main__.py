@@ -14,6 +14,16 @@ def _progress(frac: float, msg: str) -> None:
     print(f"[{frac * 100:5.1f}%] {msg}", file=sys.stderr, flush=True)
 
 
+def _lan_ip() -> str:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("10.255.255.255", 1))
+            return s.getsockname()[0]
+        except OSError:
+            return "your-computer-ip"
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="clipforge", description="AI short-form video generator")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -49,6 +59,9 @@ def main(argv: list[str] | None = None) -> None:
     v = sub.add_parser("serve", help="Run the web app")
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=8000)
+    v.add_argument("--lan", action="store_true", help="Let phones on your Wi-Fi open the app")
+
+    sub.add_parser("app", help="Open ClipForge as a desktop app")
 
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -74,10 +87,16 @@ def main(argv: list[str] | None = None) -> None:
             background=args.background, music=args.music)
         result = pipeline.make_story(Path(args.out), opts, _progress)
         print(f"\nSaved {Path(args.out) / result['video']} ({result['duration']:.0f}s)")
+    elif args.cmd == "app":
+        from . import desktop
+        desktop.main()
     else:
         import uvicorn
-        print(f"ClipForge running at http://{args.host}:{args.port}")
-        uvicorn.run("clipforge.server:app", host=args.host, port=args.port)
+        host = "0.0.0.0" if args.lan else args.host
+        print(f"ClipForge running at http://127.0.0.1:{args.port}")
+        if args.lan:
+            print(f"On your phone (same Wi-Fi) open http://{_lan_ip()}:{args.port}")
+        uvicorn.run("clipforge.server:app", host=host, port=args.port)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import re
 import shutil
 import threading
 import traceback
@@ -18,7 +21,7 @@ from . import captions, pipeline, story
 
 log = logging.getLogger(__name__)
 
-ROOT = Path.cwd()
+ROOT = Path(os.environ.get("CLIPFORGE_HOME") or Path.cwd())
 OUTPUT = ROOT / "output"
 UPLOADS = ROOT / "uploads"
 BACKGROUNDS = ROOT / "backgrounds"
@@ -139,6 +142,68 @@ async def create_story(
                                  caption_preset=caption_preset, title=title, background=bg,
                                  backgrounds_dir=BACKGROUNDS, music=await _save_upload(music))
     return _submit("story", lambda out, p: pipeline.make_story(out, opts, p))
+
+
+@app.get("/sw.js")
+def service_worker() -> FileResponse:
+    # Served from the root so its scope covers the whole app.
+    return FileResponse(STATIC / "sw.js", media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+
+def _project_dir(job_id: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{6,32}", job_id):
+        raise HTTPException(404, "No such project")
+    path = OUTPUT / job_id
+    if not path.is_dir():
+        raise HTTPException(404, "No such project")
+    return path
+
+
+def _load_project(path: Path) -> dict | None:
+    for kind, name in (("clip", "clips.json"), ("story", "story.json")):
+        manifest = path / name
+        if manifest.exists():
+            result = json.loads(manifest.read_text())
+            return {"id": path.name, "kind": kind, "created": manifest.stat().st_mtime, "result": result}
+    return None
+
+
+@app.get("/api/library")
+def library() -> list[dict]:
+    """Finished projects on disk, newest first (survives app restarts)."""
+    out = []
+    for path in OUTPUT.iterdir():
+        if not path.is_dir() or not (p := _load_project(path)):
+            continue
+        r = p.pop("result")
+        if p["kind"] == "clip":
+            first = r["clips"][0] if r["clips"] else {}
+            p |= {"title": first.get("title", "Clips"), "thumbnail": first.get("thumbnail"),
+                  "count": len(r["clips"])}
+        else:
+            p |= {"title": " ".join(r["script"].split()[:8]), "thumbnail": r["thumbnail"], "count": 1}
+        out.append(p)
+    return sorted(out, key=lambda p: p["created"], reverse=True)
+
+
+@app.get("/api/library/{job_id}")
+def project(job_id: str) -> dict:
+    p = _load_project(_project_dir(job_id))
+    if p is None:
+        raise HTTPException(404, "Project is not finished")
+    return p
+
+
+@app.delete("/api/library/{job_id}")
+def delete_project(job_id: str) -> dict:
+    path = _project_dir(job_id)
+    with _lock:
+        if _jobs.get(job_id, {}).get("status") in ("queued", "running"):
+            raise HTTPException(409, "This job is still running")
+        _jobs.pop(job_id, None)
+    shutil.rmtree(path)
+    return {"deleted": job_id}
 
 
 @app.get("/api/jobs/{job_id}")

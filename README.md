@@ -9,25 +9,49 @@ An open-source AI short-form video generator, in the spirit of **Opus Clip** and
 
 Everything runs on your machine. Claude picks the highlights and writes the scripts. Without an API key, the tool falls back to a built-in heuristic for picking highlights.
 
-## Setup
+## Open the app
 
-Requires Python 3.10+ and [ffmpeg](https://ffmpeg.org/download.html).
+You need [Python 3.10+](https://www.python.org/downloads/) and [ffmpeg](https://ffmpeg.org/download.html)
+(Windows: `winget install ffmpeg`, Mac: `brew install ffmpeg`, Linux: `sudo apt install ffmpeg`).
 
-```bash
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...   # optional, enables AI highlight picking + script writing
-```
+Then double-click the launcher for your computer:
+
+| Computer | Double-click |
+|---|---|
+| Windows | `start-windows.bat` |
+| Mac | `start-mac.command` (the first time, right-click it and choose **Open**) |
+| Linux | `./start-linux.sh` |
+
+The first launch installs everything, which takes a few minutes. After that ClipForge opens straight away in its own window.
+
+The app has three screens: **Auto-Clip**, **Story Video** and **Library**. Library keeps every video you've made, even after you close the app. Each finished video has **Save** and **Share** buttons. On a phone, Share opens the share sheet, so you can send a clip straight to TikTok or Instagram.
+
+To turn on AI highlight picking and script writing, set your Anthropic API key before launching:
+`export ANTHROPIC_API_KEY=sk-ant-...` (Mac/Linux) or `setx ANTHROPIC_API_KEY sk-ant-...` (Windows, then reopen).
 
 For Story mode, drop a few gameplay videos into `backgrounds/`. One is picked at random, starting at a random point.
 
-## Web app
+### On your phone
+
+The video processing runs on your computer. Your phone just uses the app.
 
 ```bash
-python -m clipforge serve
-# open http://127.0.0.1:8000
+python -m clipforge serve --lan
 ```
 
-Upload a video or paste a link, set how many clips and how long, and download the results. There's a tab for each mode.
+The command prints an address such as `http://192.168.1.20:8000`. Open it on your phone while it's on the same Wi-Fi.
+- **iPhone:** tap Share, then **Add to Home Screen**.
+- **Android:** tap the ⋮ menu, then **Add to Home screen**.
+
+ClipForge then opens full-screen from its own icon. On a desktop browser at `http://127.0.0.1:8000`, an **Install app** button appears in the sidebar.
+
+### Manual install
+
+```bash
+pip install -e ".[desktop]"     # adds the `clipforge` and `clipforge-app` commands
+clipforge-app                   # desktop window
+clipforge serve                 # browser version at http://127.0.0.1:8000
+```
 
 ## Command line
 
@@ -70,7 +94,8 @@ Story:      topic ─Claude→ script ─edge-tts→ voice + word timings → AS
 | `clipforge/render.py` | ffmpeg filter graphs |
 | `clipforge/story.py` | Script writing, TTS voices |
 | `clipforge/pipeline.py` | The two end-to-end jobs |
-| `clipforge/server.py`, `static/index.html` | Web app |
+| `clipforge/server.py`, `static/` | App UI, Library, installable-app files (manifest, service worker, icons) |
+| `clipforge/desktop.py` | Desktop window launcher |
 
 ## Tests
 

@@ -2,141 +2,245 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ClipForge</title>
+<meta name="theme-color" content="#0b0b10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClipForge">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" href="/static/icons/favicon.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <style>
   :root {
     --bg: #0b0b10; --panel: #15151d; --panel2: #1d1d28; --line: #2a2a38;
     --text: #ececf3; --muted: #9a9ab0; --accent: #8b5cf6; --accent2: #ec4899; --ok: #22c55e; --err: #f43f5e;
+    --grad: linear-gradient(135deg, var(--accent), var(--accent2));
+    --nav-w: 232px; --tab-h: 64px;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden;
          font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 20px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
-  .logo { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent2));
-          display: grid; place-items: center; font-weight: 800; }
-  header h1 { font-size: 20px; margin: 0; }
-  header span { color: var(--muted); font-size: 13px; }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-  .tab { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
-         color: var(--muted); cursor: pointer; font-weight: 600; }
-  .tab.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; }
+
+  /* ---------- App shell ---------- */
+  .nav { position: fixed; inset: 0 auto 0 0; width: var(--nav-w); background: var(--panel);
+         border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; z-index: 10; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 22px; }
+  .brand img { width: 36px; height: 36px; border-radius: 10px; }
+  .brand b { font-size: 18px; }
+  .nav button.item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0;
+         border-radius: 10px; background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+  .nav button.item:hover { background: var(--panel2); color: var(--text); }
+  .nav button.item.active { background: var(--panel2); color: var(--text); }
+  .nav button.item.active svg { color: var(--accent2); }
+  .nav svg { width: 20px; height: 20px; flex: none; }
+  .nav .spacer { flex: 1; }
+  .badge { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 99px; background: var(--grad);
+           color: #fff; font-size: 12px; text-align: center; }
+  #installBtn { margin-top: 8px; padding: 11px; border-radius: 10px; border: 1px solid var(--line); background: none;
+                color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+
+  .app { margin-left: var(--nav-w); min-height: 100%; }
+  .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 16px 28px;
+            background: rgba(11,11,16,.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .topbar h1 { font-size: 20px; margin: 0; }
+  .topbar .mobile-brand { display: none; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 28px 60px; }
+  .screen { display: none; animation: fade .2s ease; }
+  .screen.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Phone layout: bottom tab bar, no sidebar */
+  @media (max-width: 760px) {
+    .nav { inset: auto 0 0 0; width: auto; height: calc(var(--tab-h) + env(safe-area-inset-bottom)); flex-direction: row;
+           padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--line); gap: 0; }
+    .brand, .nav .spacer, #installBtn { display: none; }
+    .nav button.item { flex-direction: column; gap: 2px; justify-content: center; font-size: 11px; padding: 6px 4px; position: relative; }
+    .nav button.item.active { background: none; }
+    .badge { position: absolute; top: 2px; left: 55%; margin: 0; font-size: 10px; }
+    .app { margin-left: 0; padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); }
+    .topbar { padding: calc(12px + env(safe-area-inset-top)) 16px 12px; }
+    .topbar .mobile-brand { display: block; width: 28px; height: 28px; border-radius: 8px; }
+    main { padding: 16px 16px 40px; }
+    .card { padding: 18px !important; }
+  }
+
+  /* ---------- Forms ---------- */
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
-  .card h2 { margin: 0 0 4px; font-size: 18px; }
-  .card p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+  .sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
   label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
   input[type=text], input[type=number], textarea, select {
     width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--panel2); color: var(--text); font: inherit; }
+  input[type=file] { width: 100%; color: var(--muted); font-size: 13px; }
   textarea { min-height: 130px; resize: vertical; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-top: 14px; }
-  .drop { border: 2px dashed var(--line); border-radius: 14px; padding: 26px; text-align: center; color: var(--muted);
+  .wide { grid-column: 1 / -1; }
+  .drop { border: 2px dashed var(--line); border-radius: 14px; padding: 34px 20px; text-align: center; color: var(--muted);
           cursor: pointer; transition: .15s; }
   .drop.over, .drop:hover { border-color: var(--accent); color: var(--text); }
+  .drop svg { width: 34px; height: 34px; display: block; margin: 0 auto 8px; color: var(--accent2); }
   .or { text-align: center; color: var(--muted); margin: 12px 0; font-size: 13px; }
-  .check { display: flex; gap: 8px; align-items: center; color: var(--text); font-weight: 500; margin-top: 26px; }
-  button.go { margin-top: 20px; width: 100%; padding: 14px; border: 0; border-radius: 12px; cursor: pointer;
-              font-weight: 700; font-size: 16px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  .check { display: flex; gap: 8px; align-items: center; color: var(--text); font-weight: 500; }
+  details { margin-top: 16px; }
+  summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; }
+  button.go { margin-top: 20px; width: 100%; padding: 15px; border: 0; border-radius: 12px; cursor: pointer;
+              font-weight: 700; font-size: 16px; color: #fff; background: var(--grad); }
   button.go:disabled { opacity: .5; cursor: wait; }
   .hidden { display: none !important; }
-  .job { margin-top: 22px; }
+
+  /* ---------- Jobs + results ---------- */
+  .job { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .job-head { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; margin-bottom: 10px; }
   .bar { height: 8px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
-  .bar > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; }
+  .bar > div { height: 100%; width: 0; background: var(--grad); transition: width .4s; }
   .status { margin-top: 8px; font-size: 14px; color: var(--muted); }
   .status.err { color: var(--err); }
-  .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; margin-top: 22px; }
+  .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin-top: 14px; }
   .clip { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-  .clip video { width: 100%; aspect-ratio: 9/16; background: #000; display: block; }
+  .clip video { width: 100%; aspect-ratio: 9/16; background: #000; display: block; object-fit: cover; }
   .clip .meta { padding: 12px; }
   .clip h3 { margin: 0 0 6px; font-size: 15px; }
   .clip p { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
   .score { display: inline-block; font-weight: 800; font-size: 13px; padding: 2px 8px; border-radius: 99px;
            background: rgba(34,197,94,.15); color: var(--ok); margin-right: 6px; }
-  .clip a { color: var(--text); font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--line);
-            padding: 6px 10px; border-radius: 8px; display: inline-block; }
-  .engine { color: var(--muted); font-size: 13px; margin-top: 16px; }
+  .btn { color: var(--text); font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--line);
+         padding: 6px 10px; border-radius: 8px; display: inline-block; background: none; cursor: pointer; }
+  .btn.danger:hover { border-color: var(--err); color: var(--err); }
+
+  /* ---------- Library ---------- */
+  .lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+  .proj { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; transition: .15s; }
+  .proj:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .proj img { width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block; background: #000; }
+  .proj .meta { padding: 10px 12px; }
+  .proj b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj small { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .back { margin-bottom: 14px; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line);
+           padding: 12px 18px; border-radius: 12px; font-weight: 600; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
 </style>
 </head>
 <body>
-<header>
-  <div class="logo">▶</div>
-  <h1>ClipForge</h1>
-  <span>Long videos → viral shorts · AI story videos</span>
-</header>
-<main>
-  <div class="tabs">
-    <button class="tab active" data-tab="clip">✂️ Auto-Clip (long → shorts)</button>
-    <button class="tab" data-tab="story">🎮 Story Video (AI voice + gameplay)</button>
+
+<nav class="nav">
+  <div class="brand"><img src="/static/icons/icon-192.png" alt=""><b>ClipForge</b></div>
+  <button class="item" data-go="clip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>
+    <span>Auto-Clip</span></button>
+  <button class="item" data-go="story">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+    <span>Story Video</span></button>
+  <button class="item" data-go="library">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span>Library</span><span class="badge hidden" id="runningBadge"></span></button>
+  <div class="spacer"></div>
+  <button id="installBtn" class="hidden">⬇ Install app</button>
+</nav>
+
+<div class="app">
+  <div class="topbar">
+    <img class="mobile-brand" src="/static/icons/icon-192.png" alt="">
+    <h1 id="title">Auto-Clip</h1>
   </div>
+  <main>
 
-  <!-- Auto-clip -->
-  <form id="clipForm" class="card" data-panel="clip">
-    <h2>Turn a long video into shorts</h2>
-    <p class="sub">Upload a podcast, stream or YouTube video. AI finds the best moments, reframes them to 9:16 and adds animated captions.</p>
-    <div class="drop" id="drop">
-      <div id="dropText">Drop a video here or click to upload</div>
-      <input type="file" name="file" id="file" accept="video/*" class="hidden">
-    </div>
-    <div class="or">— or —</div>
-    <input type="text" name="url" placeholder="Paste a YouTube / video link">
-    <div class="grid">
-      <div><label>Number of clips</label><input type="number" name="num_clips" value="5" min="1" max="20"></div>
-      <div><label>Min length (s)</label><input type="number" name="min_len" value="20" min="5"></div>
-      <div><label>Max length (s)</label><input type="number" name="max_len" value="60" min="10"></div>
-      <div><label>Layout</label>
-        <select name="layout"><option value="crop">Fill (auto-reframe on speaker)</option><option value="fit">Fit (blurred background)</option></select></div>
-      <div><label>Caption style</label><select name="caption_preset" class="presets"></select></div>
-    </div>
-    <div class="grid">
-      <div style="grid-column: span 2"><label>Instructions for the AI (optional)</label>
-        <input type="text" name="prompt" placeholder='e.g. "funniest moments only" or "clips about money"'></div>
-      <label class="check"><input type="checkbox" name="captions_on" checked> Captions</label>
-      <label class="check"><input type="checkbox" name="hook_title" checked> Hook title card</label>
-    </div>
-    <button class="go" type="submit">Generate clips</button>
-  </form>
+    <!-- Auto-clip -->
+    <section class="screen" id="screen-clip">
+      <form id="clipForm" class="card">
+        <p class="sub">Upload a podcast, stream or YouTube video. AI finds the best moments, reframes them to 9:16 and adds animated captions.</p>
+        <div class="drop" id="drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <div id="dropText">Tap to choose a video, or drop one here</div>
+          <input type="file" name="file" id="file" accept="video/*" class="hidden">
+        </div>
+        <div class="or">or</div>
+        <input type="text" name="url" inputmode="url" placeholder="Paste a YouTube / video link">
+        <div class="grid">
+          <div><label>Number of clips</label><input type="number" name="num_clips" value="5" min="1" max="20"></div>
+          <div><label>Caption style</label><select name="caption_preset" class="presets"></select></div>
+          <div><label>Layout</label>
+            <select name="layout"><option value="crop">Fill (follow speaker)</option><option value="fit">Fit (blurred background)</option></select></div>
+        </div>
+        <details>
+          <summary>More options</summary>
+          <div class="grid">
+            <div><label>Min length (s)</label><input type="number" name="min_len" value="20" min="5"></div>
+            <div><label>Max length (s)</label><input type="number" name="max_len" value="60" min="10"></div>
+            <div class="wide"><label>Instructions for the AI</label>
+              <input type="text" name="prompt" placeholder='e.g. "funniest moments only" or "clips about money"'></div>
+            <label class="check"><input type="checkbox" name="captions_on" checked> Captions</label>
+            <label class="check"><input type="checkbox" name="hook_title" checked> Hook title card</label>
+          </div>
+        </details>
+        <button class="go" type="submit">✨ Generate clips</button>
+      </form>
+      <div id="clipJobs"></div>
+    </section>
 
-  <!-- Story -->
-  <form id="storyForm" class="card hidden" data-panel="story">
-    <h2>Make a story video</h2>
-    <p class="sub">Write a script, or give a topic and let AI write it. We add a voiceover, gameplay background and bold captions.</p>
-    <div class="grid" style="margin-top:0">
-      <div style="grid-column: span 2"><label>Topic (AI writes the script)</label>
-        <input type="text" name="topic" placeholder='e.g. "My roommate secretly sold my PS5"'></div>
-      <div><label>Style</label><select name="style" id="styles"></select></div>
-      <div><label>Length (s)</label><input type="number" name="seconds" value="60" min="15" max="180"></div>
-    </div>
-    <div class="or">— or write your own —</div>
-    <textarea name="script" placeholder="Paste your script here. It will be read out exactly as written."></textarea>
-    <div class="grid">
-      <div><label>Voice</label><select name="voice" id="voices"></select></div>
-      <div><label>Caption style</label><select name="caption_preset" class="presets"></select></div>
-      <div><label>Title card (optional)</label><input type="text" name="title" placeholder="AITA for..."></div>
-      <div><label>Background</label><select name="background_name" id="bgs"><option value="">Random / gradient</option></select></div>
-      <div><label>Or upload gameplay</label><input type="file" name="background" accept="video/*"></div>
-      <div><label>Music (optional)</label><input type="file" name="music" accept="audio/*"></div>
-    </div>
-    <button class="go" type="submit">Generate video</button>
-  </form>
+    <!-- Story -->
+    <section class="screen" id="screen-story">
+      <form id="storyForm" class="card">
+        <p class="sub">Give a topic and AI writes the script, or paste your own. We add a voiceover, gameplay background and bold captions.</p>
+        <div class="grid" style="margin-top:0">
+          <div class="wide"><label>Topic</label>
+            <input type="text" name="topic" placeholder='e.g. "My roommate secretly sold my PS5"'></div>
+          <div><label>Style</label><select name="style" id="styles"></select></div>
+          <div><label>Length (s)</label><input type="number" name="seconds" value="60" min="15" max="180"></div>
+          <div><label>Voice</label><select name="voice" id="voices"></select></div>
+        </div>
+        <div class="or">or write your own script</div>
+        <textarea name="script" placeholder="Paste your script here. It will be read out exactly as written."></textarea>
+        <details>
+          <summary>Look &amp; sound</summary>
+          <div class="grid">
+            <div><label>Caption style</label><select name="caption_preset" class="presets"></select></div>
+            <div><label>Title card</label><input type="text" name="title" placeholder="AITA for..."></div>
+            <div><label>Background</label><select name="background_name" id="bgs"><option value="">Random / gradient</option></select></div>
+            <div><label>Upload gameplay</label><input type="file" name="background" accept="video/*"></div>
+            <div><label>Music</label><input type="file" name="music" accept="audio/*"></div>
+          </div>
+        </details>
+        <button class="go" type="submit">🎬 Generate video</button>
+      </form>
+      <div id="storyJobs"></div>
+    </section>
 
-  <div class="job hidden" id="job">
-    <div class="bar"><div id="barFill"></div></div>
-    <div class="status" id="status"></div>
-  </div>
-  <div class="engine" id="engine"></div>
-  <div class="results" id="results"></div>
-</main>
+    <!-- Library -->
+    <section class="screen" id="screen-library">
+      <div id="libList"></div>
+      <div id="libDetail" class="hidden"></div>
+    </section>
+
+  </main>
+</div>
 
 <script>
 const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fileUrl = (id, name) => `/files/${encodeURIComponent(id)}/${encodeURIComponent(name)}`;
+const TITLES = { clip: "Auto-Clip", story: "Story Video", library: "Library" };
 
-document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
-  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
-  document.querySelectorAll("[data-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.panel !== t.dataset.tab));
-});
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
 
+/* ---------- Navigation (hash routed so back button + shortcuts work) ---------- */
+function route() {
+  const [screen, arg] = (location.hash.slice(1) || "clip").split("/");
+  const name = TITLES[screen] ? screen : "clip";
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === `screen-${name}`));
+  document.querySelectorAll(".nav .item").forEach(b => b.classList.toggle("active", b.dataset.go === name));
+  $("#title").textContent = TITLES[name];
+  if (name === "library") arg ? openProject(arg) : loadLibrary();
+}
+document.querySelectorAll(".nav .item").forEach(b => b.onclick = () => { location.hash = b.dataset.go; });
+addEventListener("hashchange", route);
+
+/* ---------- Options ---------- */
 fetch("/api/options").then(r => r.json()).then(o => {
   document.querySelectorAll(".presets").forEach(sel =>
     sel.innerHTML = o.caption_presets.map(p => `<option>${esc(p)}</option>`).join(""));
@@ -145,74 +249,150 @@ fetch("/api/options").then(r => r.json()).then(o => {
   $("#bgs").innerHTML += o.backgrounds.map(b => `<option>${esc(b)}</option>`).join("");
 });
 
+/* ---------- Upload box ---------- */
 const drop = $("#drop"), fileInput = $("#file");
 drop.onclick = () => fileInput.click();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
 drop.ondragleave = () => drop.classList.remove("over");
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); fileInput.files = e.dataTransfer.files; showFile(); };
 fileInput.onchange = showFile;
-function showFile() { const f = fileInput.files[0]; $("#dropText").textContent = f ? `📹 ${f.name}` : "Drop a video here or click to upload"; }
+function showFile() { const f = fileInput.files[0]; $("#dropText").textContent = f ? `📹 ${f.name}` : "Tap to choose a video, or drop one here"; }
 
-function submit(form, endpoint) {
+/* ---------- Jobs ---------- */
+const running = new Set();
+function updateBadge() {
+  const b = $("#runningBadge"); b.textContent = running.size; b.classList.toggle("hidden", !running.size);
+}
+
+function bindForm(form, endpoint, listEl) {
   form.onsubmit = async e => {
     e.preventDefault();
     const data = new FormData(form);
     form.querySelectorAll("input[type=checkbox]").forEach(cb => data.set(cb.name, cb.checked ? "true" : "false"));
     const btn = $("button.go", form); btn.disabled = true;
-    $("#results").innerHTML = ""; $("#engine").textContent = "";
-    $("#job").classList.remove("hidden"); setStatus(0, "Uploading…");
+    const card = document.createElement("div"); card.className = "job";
+    card.innerHTML = `<div class="job-head"><span>New job</span><span class="pct">0%</span></div>
+      <div class="bar"><div></div></div><div class="status">Uploading…</div><div class="results"></div>`;
+    listEl.prepend(card);
     try {
       const r = await fetch(endpoint, { method: "POST", body: data });
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || "Request failed");
-      await poll(j.id);
-    } catch (err) { setStatus(0, err.message, true); }
+      btn.disabled = false;
+      form.reset(); showFile();
+      await watchJob(j.id, card);
+    } catch (err) { setCard(card, 0, err.message, true); }
     btn.disabled = false;
   };
 }
-submit($("#clipForm"), "/api/clip");
-submit($("#storyForm"), "/api/story");
+bindForm($("#clipForm"), "/api/clip", $("#clipJobs"));
+bindForm($("#storyForm"), "/api/story", $("#storyJobs"));
 
-function setStatus(p, msg, err = false) {
-  $("#barFill").style.width = `${Math.round(p * 100)}%`;
-  const s = $("#status"); s.textContent = msg; s.classList.toggle("err", err);
+function setCard(card, p, msg, err = false) {
+  $(".bar > div", card).style.width = `${Math.round(p * 100)}%`;
+  $(".pct", card).textContent = `${Math.round(p * 100)}%`;
+  const s = $(".status", card); s.textContent = msg; s.classList.toggle("err", err);
 }
 
-async function poll(id) {
-  while (true) {
-    const j = await (await fetch(`/api/jobs/${id}`)).json();
-    if (j.status === "error") return setStatus(j.progress, `Error: ${j.error}`, true);
-    setStatus(j.progress, j.message);
-    if (j.status === "done") return show(id, j);
-    await new Promise(r => setTimeout(r, 1500));
-  }
+async function watchJob(id, card) {
+  running.add(id); updateBadge();
+  try {
+    while (true) {
+      const j = await (await fetch(`/api/jobs/${id}`)).json();
+      if (j.status === "error") return setCard(card, j.progress, `Error: ${j.error}`, true);
+      setCard(card, j.progress, j.message);
+      if (j.status === "done") {
+        $(".job-head span", card).textContent = j.kind === "clip" ? `${j.result.clips.length} clips ready` : "Video ready";
+        $(".results", card).innerHTML = renderResults(id, j.kind, j.result);
+        toast("✅ Your video is ready");
+        notify(j.kind === "clip" ? "Your clips are ready" : "Your story video is ready");
+        return;
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  } finally { running.delete(id); updateBadge(); }
 }
 
-function show(id, job) {
-  const base = `/files/${id}/`;
-  const r = job.result;
-  if (job.kind === "clip") {
-    $("#engine").textContent = `Highlights chosen by: ${r.engine}`;
-    $("#results").innerHTML = r.clips.map(c => `
-      <div class="clip">
-        <video src="${base}${encodeURIComponent(c.video)}" poster="${base}${encodeURIComponent(c.thumbnail)}" controls playsinline preload="none"></video>
-        <div class="meta">
-          <h3><span class="score">${c.score}</span>${esc(c.title)}</h3>
-          <p>${esc(c.reason)} · ${Math.round(c.duration)}s</p>
-          <a href="${base}${encodeURIComponent(c.video)}" download>⬇ Download</a>
-        </div>
-      </div>`).join("");
-  } else {
-    $("#results").innerHTML = `
-      <div class="clip">
-        <video src="${base}${encodeURIComponent(r.video)}" poster="${base}${encodeURIComponent(r.thumbnail)}" controls playsinline></video>
-        <div class="meta">
-          <p>${esc(r.script.slice(0, 220))}…</p>
-          <a href="${base}${encodeURIComponent(r.video)}" download>⬇ Download</a>
-        </div>
-      </div>`;
-  }
+function renderResults(id, kind, r) {
+  if (kind === "clip") return r.clips.map(c => `
+    <div class="clip">
+      <video src="${fileUrl(id, c.video)}" poster="${fileUrl(id, c.thumbnail)}" controls playsinline preload="none"></video>
+      <div class="meta">
+        <h3><span class="score">${esc(c.score)}</span>${esc(c.title)}</h3>
+        <p>${esc(c.reason)} · ${Math.round(c.duration)}s</p>
+        <a class="btn" href="${fileUrl(id, c.video)}" download>⬇ Save</a>
+        <button class="btn share" data-src="${fileUrl(id, c.video)}" data-name="${esc(c.video)}">↗ Share</button>
+      </div>
+    </div>`).join("");
+  return `
+    <div class="clip">
+      <video src="${fileUrl(id, r.video)}" poster="${fileUrl(id, r.thumbnail)}" controls playsinline></video>
+      <div class="meta">
+        <p>${esc(r.script.slice(0, 200))}…</p>
+        <a class="btn" href="${fileUrl(id, r.video)}" download>⬇ Save</a>
+        <button class="btn share" data-src="${fileUrl(id, r.video)}" data-name="${esc(r.video)}">↗ Share</button>
+      </div>
+    </div>`;
 }
+
+/* Share straight to TikTok/Instagram etc. via the phone's share sheet. */
+document.addEventListener("click", async e => {
+  const b = e.target.closest(".share"); if (!b) return;
+  try {
+    const blob = await (await fetch(b.dataset.src)).blob();
+    const file = new File([blob], b.dataset.name, { type: "video/mp4" });
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
+    else { await navigator.clipboard.writeText(new URL(b.dataset.src, location).href); toast("Link copied"); }
+  } catch (err) { if (err.name !== "AbortError") toast("Couldn't share - use Save instead"); }
+});
+
+/* ---------- Library ---------- */
+async function loadLibrary() {
+  $("#libDetail").classList.add("hidden"); $("#libList").classList.remove("hidden");
+  const items = await (await fetch("/api/library")).json();
+  $("#libList").innerHTML = items.length ? `<div class="lib">${items.map(p => `
+    <div class="proj" data-id="${esc(p.id)}">
+      ${p.thumbnail ? `<img src="${fileUrl(p.id, p.thumbnail)}" alt="" loading="lazy">` : `<img alt="">`}
+      <div class="meta"><b>${esc(p.title)}</b>
+        <small>${p.kind === "clip" ? `✂️ ${p.count} clips` : "🎮 Story"} · ${new Date(p.created * 1000).toLocaleDateString()}</small></div>
+    </div>`).join("")}</div>`
+    : `<div class="empty">No videos yet.<br>Make your first one in Auto-Clip or Story Video.</div>`;
+  document.querySelectorAll(".proj").forEach(el => el.onclick = () => { location.hash = `library/${el.dataset.id}`; });
+}
+
+async function openProject(id) {
+  const r = await fetch(`/api/library/${encodeURIComponent(id)}`);
+  if (!r.ok) { location.hash = "library"; return; }
+  const p = await r.json();
+  $("#libList").classList.add("hidden");
+  const d = $("#libDetail"); d.classList.remove("hidden");
+  d.innerHTML = `<button class="btn back" onclick="location.hash='library'">← Library</button>
+    <button class="btn danger back" id="delProj" style="float:right">🗑 Delete</button>
+    <div class="results">${renderResults(id, p.kind, p.result)}</div>`;
+  $("#delProj").onclick = async () => {
+    if (!confirm("Delete this project and its videos?")) return;
+    await fetch(`/api/library/${encodeURIComponent(id)}`, { method: "DELETE" });
+    toast("Deleted"); location.hash = "library";
+  };
+}
+
+/* ---------- Notifications, install, offline ---------- */
+function notify(msg) {
+  if (document.hidden && "Notification" in window && Notification.permission === "granted")
+    new Notification("ClipForge", { body: msg, icon: "/static/icons/icon-192.png" });
+}
+document.querySelectorAll("button.go").forEach(b => b.addEventListener("click", () => {
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+}));
+
+let installEvt;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").classList.remove("hidden"); });
+$("#installBtn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").classList.add("hidden"); };
+addEventListener("appinstalled", () => toast("ClipForge installed 🎉"));
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+route();
 </script>
 </body>
 </html>

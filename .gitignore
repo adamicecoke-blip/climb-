@@ -7,3 +7,6 @@ uploads/
 *.mp3
 *.wav
 !backgrounds/.gitkeep
+packaging/ffmpeg/
+build/
+dist/

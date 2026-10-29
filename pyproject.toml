@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clipforge"
-version = "0.2.0"
+version = "0.3.0"
 description = "AI short-form video generator: auto-clip long videos and make story videos"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,4 +26,4 @@ clipforge-app = "clipforge.desktop:main"
 packages = ["clipforge"]
 
 [tool.setuptools.package-data]
-clipforge = ["static/*", "static/icons/*"]
+clipforge = ["static/*", "static/icons/*", "fonts/*"]

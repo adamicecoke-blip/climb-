@@ -35,7 +35,9 @@ def _free_port(preferred: int = 8765) -> int:
 def _start_server(port: int) -> None:
     import uvicorn
 
-    config = uvicorn.Config("clipforge.server:app", host="127.0.0.1", port=port, log_level="warning")
+    from .server import app  # imported, not named by string, so installers bundle it
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
     threading.Thread(target=uvicorn.Server(config).run, daemon=True).start()
 
 
@@ -103,6 +105,12 @@ def main() -> None:
     except MediaError as e:
         print(f"⚠ {e}\n  Windows: winget install ffmpeg   Mac: brew install ffmpeg   Linux: sudo apt install ffmpeg")
         sys.exit(1)
+    if getattr(sys, "frozen", False) and not os.environ.get("CLIPFORGE_HOME"):
+        # Installed app: keep videos in the user's home folder, not wherever it was launched.
+        home = Path.home() / "ClipForge"
+        (home / "backgrounds").mkdir(parents=True, exist_ok=True)
+        os.environ["CLIPFORGE_HOME"] = str(home)
+        os.chdir(home)
     port = _free_port()
     url = f"http://127.0.0.1:{port}/"
     print("Starting ClipForge…")

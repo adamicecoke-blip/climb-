@@ -1,0 +1,16 @@
+# One-click hosting on Render: New + -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: clipforge
+    runtime: docker
+    plan: standard            # video rendering needs at least 2 GB RAM
+    healthCheckPath: /healthz
+    envVars:
+      - key: CLIPFORGE_PASSWORD
+        generateValue: true   # shown in the Render dashboard; the browser asks for it once
+      - key: ANTHROPIC_API_KEY
+        sync: false           # paste your key in the dashboard
+    disk:
+      name: clipforge-data
+      mountPath: /data
+      sizeGB: 20

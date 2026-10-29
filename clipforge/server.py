@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import threading
 import traceback
@@ -13,8 +15,9 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import captions, pipeline, story
@@ -30,6 +33,32 @@ for d in (OUTPUT, UPLOADS, BACKGROUNDS):
     d.mkdir(exist_ok=True)
 
 app = FastAPI(title="ClipForge")
+
+# When hosted online, set CLIPFORGE_PASSWORD so strangers can't use your
+# computer time and API credits. The browser asks once, then remembers it.
+PASSWORD = os.environ.get("CLIPFORGE_PASSWORD", "")
+
+
+@app.middleware("http")
+async def require_password(request: Request, call_next):
+    if PASSWORD and request.url.path not in ("/static/manifest.webmanifest", "/healthz"):
+        given = ""
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("basic "):
+            try:
+                given = base64.b64decode(auth[6:]).decode().partition(":")[2]
+            except ValueError:
+                pass
+        if not secrets.compare_digest(given.encode(), PASSWORD.encode()):
+            return Response("Password required", status_code=401,
+                            headers={"WWW-Authenticate": 'Basic realm="ClipForge"'})
+    return await call_next(request)
+
+
+@app.get("/healthz")
+def healthz() -> dict:
+    return {"ok": True}
+
 app.mount("/files", StaticFiles(directory=OUTPUT), name="files")
 
 # Rendering is CPU-heavy, so jobs run one at a time.
@@ -43,7 +72,7 @@ def _update(job_id: str, **kw) -> None:
         _jobs[job_id].update(kw)
 
 
-def _submit(kind: str, fn, *args) -> dict:
+def _submit(kind: str, fn, cleanup: tuple[Path | None, ...] = ()) -> dict:
     job_id = uuid.uuid4().hex[:10]
     out_dir = OUTPUT / job_id
     with _lock:
@@ -56,11 +85,16 @@ def _submit(kind: str, fn, *args) -> dict:
     def work() -> None:
         _update(job_id, status="running")
         try:
-            result = fn(out_dir, *args, progress)
+            result = fn(out_dir, progress)
             _update(job_id, status="done", progress=1.0, result=result)
         except Exception as e:
             log.error("job %s failed\n%s", job_id, traceback.format_exc())
             _update(job_id, status="error", error=str(e), message="Failed")
+        finally:
+            # Uploaded originals are only needed while rendering.
+            for path in cleanup:
+                if path is not None:
+                    path.unlink(missing_ok=True)
 
     _executor.submit(work)
     return _jobs[job_id]
@@ -70,8 +104,11 @@ async def _save_upload(upload: UploadFile | None) -> Path | None:
     if upload is None or not upload.filename:
         return None
     dest = UPLOADS / f"{uuid.uuid4().hex[:8]}-{Path(upload.filename).name}"
-    with dest.open("wb") as f:
-        shutil.copyfileobj(upload.file, f)
+    def copy() -> None:
+        with dest.open("wb") as f:
+            shutil.copyfileobj(upload.file, f, 1024 * 1024)
+
+    await run_in_threadpool(copy)  # big videos would otherwise freeze the server
     return dest
 
 
@@ -113,7 +150,7 @@ async def create_clips(
     opts = pipeline.ClipOptions(num_clips=max(1, min(num_clips, 20)), min_len=min_len,
                                 max_len=max_len, layout=layout, caption_preset=caption_preset,
                                 captions=captions_on, hook_title=hook_title, prompt=prompt)
-    return _submit("clip", lambda out, p: pipeline.auto_clip(source, out, opts, p))
+    return _submit("clip", lambda out, p: pipeline.auto_clip(source, out, opts, p), (src,))
 
 
 @app.post("/api/story")
@@ -131,7 +168,7 @@ async def create_story(
 ) -> dict:
     if not script.strip() and not topic.strip():
         raise HTTPException(400, "Write a script or give a topic")
-    bg = await _save_upload(background)
+    bg = uploaded_bg = await _save_upload(background)
     if bg is None and background_name:
         candidate = (BACKGROUNDS / background_name).resolve()
         if candidate.parent != BACKGROUNDS.resolve() or not candidate.exists():
@@ -141,7 +178,8 @@ async def create_story(
                                  seconds=max(15, min(seconds, 180)), voice=voice,
                                  caption_preset=caption_preset, title=title, background=bg,
                                  backgrounds_dir=BACKGROUNDS, music=await _save_upload(music))
-    return _submit("story", lambda out, p: pipeline.make_story(out, opts, p))
+    return _submit("story", lambda out, p: pipeline.make_story(out, opts, p),
+                   (uploaded_bg, opts.music))
 
 
 @app.get("/sw.js")
@@ -164,7 +202,10 @@ def _load_project(path: Path) -> dict | None:
     for kind, name in (("clip", "clips.json"), ("story", "story.json")):
         manifest = path / name
         if manifest.exists():
-            result = json.loads(manifest.read_text())
+            try:
+                result = json.loads(manifest.read_text())
+            except (OSError, ValueError):
+                return None  # half-written or damaged: skip rather than break the library
             return {"id": path.name, "kind": kind, "created": manifest.stat().st_mtime, "result": result}
     return None
 

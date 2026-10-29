@@ -13,11 +13,12 @@ from pathlib import Path
 from .transcribe import Word
 
 WIDTH, HEIGHT = 1080, 1920
+FONTS_DIR = Path(__file__).parent / "fonts"  # bundled so captions look the same everywhere
 
 
 @dataclass
 class CaptionStyle:
-    font: str = "Montserrat Black"
+    font: str = "Inter Black"
     size: int = 92
     color: str = "#FFFFFF"
     highlight: str = "#FFE600"

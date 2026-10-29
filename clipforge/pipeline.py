@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -44,7 +45,8 @@ def auto_clip(source: str | Path, out_dir: Path, opts: ClipOptions,
     out_dir.mkdir(parents=True, exist_ok=True)
 
     src = Path(str(source))
-    if re.match(r"^https?://", str(source)):
+    is_url = bool(re.match(r"^https?://", str(source)))
+    if is_url:
         progress(0.02, "Downloading video")
         src = media.download(str(source), out_dir / "source")
     if not src.exists():
@@ -90,7 +92,9 @@ def auto_clip(source: str | Path, out_dir: Path, opts: ClipOptions,
         results.append(h.to_dict() | {"video": video.name, "thumbnail": thumb.name,
                                       "transcript": " ".join(w.text for w in words)})
 
-    manifest = {"source": str(source), "engine": engine, "clips": results}
+    if src.parent == out_dir / "source":
+        shutil.rmtree(src.parent, ignore_errors=True)  # downloaded original, no longer needed
+    manifest = {"source": str(source) if is_url else src.name, "engine": engine, "clips": results}
     (out_dir / "clips.json").write_text(json.dumps(manifest, indent=2))
     progress(1.0, f"Done - {len(results)} clips")
     return manifest

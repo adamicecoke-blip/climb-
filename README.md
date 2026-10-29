@@ -9,9 +9,43 @@ An open-source AI short-form video generator, in the spirit of **Opus Clip** and
 
 Everything runs on your machine. Claude picks the highlights and writes the scripts. Without an API key, the tool falls back to a built-in heuristic for picking highlights.
 
-## Open the app
+## Three ways to use it
 
-You need [Python 3.10+](https://www.python.org/downloads/) and [ffmpeg](https://ffmpeg.org/download.html)
+| | What you get | Needs |
+|---|---|---|
+| **Desktop app** (installer) | Everything: automatic transcripts, face tracking, AI voices, full 1080×1920 | Just the download |
+| **Online** (your own website) | The same app from any phone or computer, with a password | A hosting account, such as Render |
+| **ClipForge Studio** (inside Claude) | Claude-picked clips and AI scripts, rendered in your browser at 720×1280 | You paste the transcript; voice comes from an uploaded recording |
+
+## Download the desktop app
+
+Installers are built automatically by GitHub (see `.github/workflows/build-apps.yml`):
+
+1. Open the repository on GitHub, go to **Actions**, then **Build apps**, then **Run workflow**. Or push a tag such as `v0.3.0`, which also creates a Release with the files attached.
+2. When it finishes, about 15 minutes later, download your file from the run's **Artifacts** section:
+   - **Windows:** `ClipForge-Windows-Setup.exe`. Run it; it adds Start-menu and desktop shortcuts.
+   - **Mac:** `ClipForge-Mac.dmg`. Drag ClipForge into Applications. The app isn't signed, so the first time, right-click it and choose **Open**. ffmpeg inside is an Intel build, which Macs with Apple chips run through Rosetta; macOS offers to install Rosetta if it's missing.
+   - **Linux:** `ClipForge-Linux.tar.gz`. Unpack it and run `ClipForge/ClipForge`.
+
+The installed app keeps your videos in a `ClipForge` folder in your home folder. Put gameplay clips for story videos in `ClipForge/backgrounds`. The first transcription downloads the speech-to-text model (about 500 MB) once.
+
+## Put it online
+
+The repository includes a `Dockerfile` and a `render.yaml`:
+
+- **Render:** choose New, then Blueprint, then pick this repo. It creates the service, a disk for your videos, and a random password, which you'll find in the dashboard. Paste your `ANTHROPIC_API_KEY` in the dashboard. Pick at least the Standard plan, because video rendering needs RAM.
+- **Anywhere else:** `docker build -t clipforge . && docker run -p 8000:8000 -v clipforge-data:/data -e CLIPFORGE_PASSWORD=choose-one -e ANTHROPIC_API_KEY=sk-ant-... clipforge`
+
+Always set `CLIPFORGE_PASSWORD` when it's online. Otherwise anyone who finds the address can use your server and API credits. Over HTTPS, phones get the full **Install app** prompt.
+
+## ClipForge Studio (inside Claude)
+
+`studio/clipforge-studio.html` is a browser-only version that runs as a Claude artifact. Claude picks the highlights and writes scripts, and the video is recorded in your browser and saved through Claude. Because it can't run speech-to-text or face tracking in a browser, you paste the transcript (YouTube's "Show transcript", or an .srt/.vtt file) and set the crop position with a slider.
+
+## Run from source
+
+
+For developers, or if you'd rather not use an installer. You need [Python 3.10+](https://www.python.org/downloads/) and [ffmpeg](https://ffmpeg.org/download.html)
 (Windows: `winget install ffmpeg`, Mac: `brew install ffmpeg`, Linux: `sudo apt install ffmpeg`).
 
 Then double-click the launcher for your computer:
@@ -105,6 +139,17 @@ python -m pytest tests
 ```
 
 The tests stub out Whisper and TTS, which need model downloads and network access. They run the real ffmpeg renders and check the output is 1080×1920 with audio.
+
+## Settings
+
+| Variable | What it does |
+|---|---|
+| `ANTHROPIC_API_KEY` | Enables Claude highlight picking and script writing |
+| `CLIPFORGE_PASSWORD` | Requires a password for the web app (use it when hosting online) |
+| `CLIPFORGE_HOME` | Folder for output, uploads and backgrounds (default: current folder, or `~/ClipForge` for the installed app) |
+| `CLIPFORGE_MODEL` | Claude model (default `claude-opus-5-5`) |
+| `CLIPFORGE_WHISPER` | Speech-to-text size: `tiny`, `base`, `small` (default), `medium`, `large-v3` |
+| `CLIPFORGE_DEVICE` | `cpu` or `cuda` |
 
 ## Ideas for next steps
 

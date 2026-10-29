@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .captions import HEIGHT, WIDTH
+from .captions import FONTS_DIR, HEIGHT, WIDTH
 from .media import run
 
 ENCODE = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
           "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]
+
+
+def _ass(ass: Path) -> str:
+    """ass filter using the bundled fonts. Paths are escaped for the filtergraph
+    (Windows drive letters contain ':')."""
+    fonts = FONTS_DIR.resolve().as_posix().replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    return f"ass={ass.name}:fontsdir='{fonts}'"
 
 
 def _vertical_filter(layout: str, src_w: int, src_h: int, center_x: float | None) -> str:
@@ -40,7 +47,7 @@ def render_clip(src: Path, start: float, end: float, out: Path, ass: Path | None
     graph = _vertical_filter(layout, src_w, src_h, center_x)
     if ass is not None:
         # Run from the subtitle's directory so its path needs no filter escaping.
-        graph = graph[:-3] + f"[pre];[pre]ass={ass.name}[v]"
+        graph = graph[:-3] + f"[pre];[pre]{_ass(ass)}[v]"
     cmd = ["ffmpeg", "-y", "-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", str(src.resolve()),
            "-filter_complex", graph, "-map", "[v]"]
     if has_audio:
@@ -64,7 +71,7 @@ def render_story(background: Path | None, voice: Path, duration: float, out: Pat
         vf = (f"[0:v]scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,"
               f"crop={WIDTH}:{HEIGHT},setsar=1")
     cmd += ["-i", str(voice.resolve())]
-    graph = f"{vf},ass={ass.name}[v]"
+    graph = f"{vf},{_ass(ass)}[v]"
     audio_map = "1:a"
     if music is not None:
         cmd += ["-stream_loop", "-1", "-i", str(music.resolve())]

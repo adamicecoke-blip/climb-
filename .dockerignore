@@ -1,0 +1,9 @@
+.git
+.venv
+output
+uploads
+dist
+build
+packaging/ffmpeg
+tests
+**/__pycache__

@@ -3,9 +3,25 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+
+def _use_bundled_ffmpeg() -> None:
+    """The installer ships ffmpeg/ffprobe in a folder next to the app; prefer them."""
+    if not getattr(sys, "frozen", False):
+        return
+    for root in (Path(getattr(sys, "_MEIPASS", sys.executable)), Path(sys.executable).parent):
+        bundled = root / "ffmpeg"
+        if bundled.is_dir():
+            os.environ["PATH"] = str(bundled) + os.pathsep + os.environ.get("PATH", "")
+            return
+
+
+_use_bundled_ffmpeg()
 
 
 class MediaError(RuntimeError):

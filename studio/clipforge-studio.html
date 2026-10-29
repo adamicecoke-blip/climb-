@@ -1,0 +1,806 @@
+<title>ClipForge Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Inter:wght@700;900&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Layout: editor shell - controls on the left, a sticky 9:16 phone preview on the right; stacks on phones.
+     Deliberately single dark theme, like any video editor, so footage colours read true. */
+  :root {
+    --ink: #0c0b12;          /* page */
+    --slab: #16141f;         /* panels */
+    --slab-2: #1f1c2b;       /* inputs, raised */
+    --rule: #2d2a3c;
+    --text: #efedf7;
+    --muted: #a19db6;
+    --violet: #8b5cf6;
+    --pink: #ec4899;
+    --score: #34d399;
+    --warn: #fbbf24;
+    --err: #fb7185;
+    --brand: linear-gradient(135deg, var(--violet), var(--pink));
+    --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --f-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--ink); color: var(--text); }
+  body { font: 15px/1.5 var(--f-body); padding-left: max(16px, env(safe-area-inset-left, 0px));
+         padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 40px; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ink); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ink);
+               display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-block: 16px 14px; border-bottom: 1px solid var(--rule); }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); display: grid; place-items: center; flex: none; }
+  .logo svg { width: 16px; height: 16px; }
+  .name { font: 800 21px/1 var(--f-display); letter-spacing: -.01em; }
+  .modes { margin-left: auto; display: flex; gap: 4px; background: var(--slab); border: 1px solid var(--rule); padding: 4px; border-radius: 999px; }
+  .modes a { padding: 7px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 700; font-size: 14px; }
+  .modes a[aria-current="page"] { background: var(--slab-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--rule); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; margin-top: 22px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } .preview { position: static !important; order: -1; } }
+
+  h1 { font: 800 clamp(26px, 4vw, 36px)/1.1 var(--f-display); letter-spacing: -.02em; margin: 0 0 6px; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0 0 22px; max-width: 62ch; }
+  .step { border-top: 1px solid var(--rule); padding-block: 18px; }
+  .step-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .step-h b { font: 700 16px var(--f-display); }
+  .step-h .n { font: 500 12px var(--f-mono); color: var(--pink); }
+  .step-h small { color: var(--muted); margin-left: auto; font-size: 13px; }
+  label.l { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+  input[type=text], input[type=number], select, textarea { width: 100%; background: var(--slab-2); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.45; }
+  textarea.mono { font: 13px/1.5 var(--f-mono); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .row + .row { margin-top: 12px; }
+  .drop { display: flex; align-items: center; gap: 14px; border: 1.5px dashed var(--rule); border-radius: 12px; padding: 14px; cursor: pointer; }
+  .drop:hover, .drop.over { border-color: var(--violet); }
+  .drop .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--slab-2); display: grid; place-items: center; flex: none; }
+  .drop .ic svg { width: 20px; height: 20px; color: var(--pink); }
+  .drop div { min-width: 0; }
+  .drop b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop span { color: var(--muted); font-size: 13px; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .btn { border: 1px solid var(--rule); background: var(--slab-2); border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--brand); border-color: transparent; color: #fff; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .note { font-size: 13px; color: var(--muted); }
+  .note.err { color: var(--err); }
+  .note.ok { color: var(--score); }
+  .tag { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--warn); border: 1px solid currentColor; border-radius: 6px; padding: 1px 6px; }
+
+  /* Clip list */
+  .clips { display: grid; gap: 10px; }
+  .clip { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; text-align: left; width: 100%;
+          background: var(--slab); border: 1px solid var(--rule); border-radius: 12px; padding: 12px; cursor: pointer; }
+  .clip:hover { border-color: var(--muted); }
+  .clip[aria-pressed="true"] { border-color: var(--pink); background: var(--slab-2); }
+  .score { font: 800 22px/1 var(--f-display); color: var(--score); text-align: center; }
+  .score small { display: block; font: 500 10px var(--f-mono); color: var(--muted); margin-top: 3px; letter-spacing: .05em; }
+  .clip h3 { margin: 0 0 2px; font: 700 15px var(--f-body); }
+  .clip p { margin: 0; font-size: 13px; color: var(--muted); }
+  .tc { font: 500 12px var(--f-mono); color: var(--muted); white-space: nowrap; }
+
+  /* Preview */
+  .preview { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+  .phone { background: #000; border-radius: 26px; padding: 10px; border: 1px solid var(--rule); max-width: 360px; margin: 0 auto; }
+  canvas { display: block; width: 100%; max-width: 100%; aspect-ratio: 9 / 16; border-radius: 18px; background: #111; }
+  .transport { display: flex; align-items: center; gap: 10px; margin: 12px auto 0; max-width: 360px; }
+  .transport .btn { padding: 8px 12px; }
+  .bar { flex: 1; height: 6px; background: var(--slab-2); border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--brand); }
+  .time { font: 500 12px var(--f-mono); color: var(--muted); min-width: 86px; text-align: right; font-variant-numeric: tabular-nums; }
+  .export { max-width: 360px; margin: 14px auto 0; display: grid; gap: 8px; }
+  .export .btn { justify-content: center; }
+  .spec { font: 500 11px var(--f-mono); color: var(--muted); text-align: center; letter-spacing: .04em; }
+  .saved { max-width: 360px; margin: 10px auto 0; display: grid; gap: 6px; }
+  .saved button { justify-content: space-between; width: 100%; }
+
+  .desk { margin-top: 26px; border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; background: var(--slab); }
+  .desk b { font-family: var(--f-display); }
+  .desk p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 70ch; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="#fff"/></svg></div>
+    <div class="name">ClipForge Studio</div>
+    <nav class="modes" aria-label="Mode">
+      <a href="#clip" id="tab-clip">Auto-Clip</a>
+      <a href="#story" id="tab-story">Story Video</a>
+    </nav>
+  </header>
+
+  <div class="grid">
+    <div>
+      <!-- ============ AUTO-CLIP ============ -->
+      <section id="view-clip">
+        <h1>Long video in, viral shorts out</h1>
+        <p class="lede">Add a video and its transcript. Claude picks the moments most likely to go viral, then each one is cropped to 9:16 with word-by-word captions, ready to save.</p>
+
+        <div class="step">
+          <div class="step-h"><span class="n">01</span><b>Your video</b><small>Stays on your device</small></div>
+          <label class="drop" id="clipDrop">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+            <div><b id="clipFileName">Choose a video file</b><span>MP4, MOV or WebM. Podcasts, streams, interviews.</span></div>
+            <input type="file" id="clipFile" accept="video/*" hidden>
+          </label>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span class="n">02</span><b>Transcript</b><small id="segCount"></small></div>
+          <textarea id="transcript" class="mono" rows="8" spellcheck="false"></textarea>
+          <div class="btns">
+            <label class="btn" for="srtFile">Load .srt / .vtt file</label>
+            <input type="file" id="srtFile" accept=".srt,.vtt,.txt" hidden>
+            <span class="note">On YouTube: <b>…More → Show transcript</b>, select all and paste. SRT and VTT subtitle files work too.</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span class="n">03</span><b>Find the moments</b></div>
+          <div class="row">
+            <div><label class="l" for="numClips">Clips</label><input type="number" id="numClips" value="4" min="1" max="10"></div>
+            <div><label class="l" for="minLen">Min seconds</label><input type="number" id="minLen" value="15" min="5"></div>
+            <div><label class="l" for="maxLen">Max seconds</label><input type="number" id="maxLen" value="60" min="10"></div>
+          </div>
+          <div class="row"><div><label class="l" for="clipPrompt">Instructions for Claude (optional)</label>
+            <input type="text" id="clipPrompt" placeholder="e.g. only the funniest moments, or clips about money"></div></div>
+          <div class="btns">
+            <button class="btn primary" id="findBtn">Find viral moments with Claude</button>
+            <button class="btn" id="quickBtn">Quick pick (no AI)</button>
+            <span class="note" id="findNote"></span>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span class="n">04</span><b>Pick a clip</b><span class="tag" id="exampleTag">Example</span></div>
+          <div class="clips" id="clipList"></div>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span class="n">05</span><b>Look</b></div>
+          <div class="row">
+            <div><label class="l" for="layout">Layout</label>
+              <select id="layout"><option value="crop">Fill: crop to 9:16</option><option value="fit">Fit: blurred background</option></select></div>
+            <div><label class="l" for="framePos">Frame position</label><input type="range" id="framePos" min="0" max="1" step="0.01" value="0.5" style="width:100%"></div>
+            <div><label class="l" for="clipPreset">Captions</label><select id="clipPreset" class="presets"></select></div>
+          </div>
+          <div class="btns">
+            <label class="check"><input type="checkbox" id="clipCaptions" checked> Captions</label>
+            <label class="check"><input type="checkbox" id="clipHook" checked> Hook title (first 3s)</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ STORY ============ -->
+      <section id="view-story" hidden>
+        <h1>Story videos over gameplay</h1>
+        <p class="lede">Give Claude a topic and it writes a scroll-stopping script, or paste your own. Big animated captions play over gameplay footage or a moving gradient.</p>
+
+        <div class="step">
+          <div class="step-h"><span class="n">01</span><b>Script</b><small id="wordCount"></small></div>
+          <div class="row">
+            <div style="grid-column: span 2"><label class="l" for="topic">Topic</label>
+              <input type="text" id="topic" value="My roommate secretly sold my PS5 to pay his rent"></div>
+            <div><label class="l" for="style">Style</label>
+              <select id="style">
+                <option value="a dramatic first-person Reddit story (AITA / relationships / revenge), told like the poster">Reddit story</option>
+                <option value="rapid-fire mind-blowing facts">Facts</option>
+                <option value="a creepy short horror story with a chilling twist">Scary</option>
+                <option value="an intense motivational monologue">Motivation</option>
+                <option value="a fast, clear explainer that teaches one surprising idea">Explainer</option>
+              </select></div>
+            <div><label class="l" for="seconds">Length (s)</label><input type="number" id="seconds" value="45" min="15" max="120"></div>
+          </div>
+          <div class="btns">
+            <button class="btn primary" id="writeBtn">Write script with Claude</button>
+            <button class="btn" id="stopWrite" hidden>Stop</button>
+            <span class="note" id="writeNote"></span>
+          </div>
+          <div style="margin-top:12px"><textarea id="script" rows="7"></textarea></div>
+          <div class="row" style="margin-top:12px">
+            <div style="grid-column: 1 / -1"><label class="l" for="storyTitle">Title card</label><input type="text" id="storyTitle" value="AITA for kicking out my roommate?"></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span class="n">02</span><b>Background and sound</b></div>
+          <div class="row">
+            <label class="drop" id="bgDrop"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg></span>
+              <div><b id="bgName">Gameplay video</b><span>Optional. Otherwise a moving gradient.</span></div><input type="file" id="bgFile" accept="video/*" hidden></label>
+            <label class="drop" id="voiceDrop"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></span>
+              <div><b id="voiceName">Voiceover</b><span>Optional audio. Captions sync to it.</span></div><input type="file" id="voiceFile" accept="audio/*" hidden></label>
+            <label class="drop" id="musicDrop"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+              <div><b id="musicName">Music</b><span>Optional, plays quietly underneath.</span></div><input type="file" id="musicFile" accept="audio/*" hidden></label>
+          </div>
+          <div class="row">
+            <div><label class="l" for="storyPreset">Captions</label><select id="storyPreset" class="presets"></select></div>
+            <div><label class="l" for="ttsVoice">AI voice (preview)</label><select id="ttsVoice"></select></div>
+          </div>
+          <p class="note" id="voiceHelp">The AI voice reads along while you preview. A browser can't record it into the saved file, so for a voiced export add a voiceover (record one on your phone), or use the desktop app, which adds the AI voice automatically.</p>
+        </div>
+      </section>
+
+      <div class="desk">
+        <b>Want automatic transcripts, face tracking and AI voices in the file?</b>
+        <p>The ClipForge desktop app does the whole job from just a video or a YouTube link, at full 1080×1920. Its code and installers are in your <a href="https://github.com/adamicecoke-blip/climb-/tree/claude/clipforge" target="_blank" rel="noopener" style="color:var(--text)">climb- repository</a>.</p>
+      </div>
+    </div>
+
+    <!-- ============ PREVIEW ============ -->
+    <aside class="preview" aria-label="Preview">
+      <div class="phone"><canvas id="cv" width="720" height="1280"></canvas></div>
+      <div class="transport">
+        <button class="btn" id="playBtn" aria-label="Play">▶ Play</button>
+        <div class="bar"><i id="barFill"></i></div>
+        <span class="time" id="timeLbl">0:00 / 0:00</span>
+      </div>
+      <div class="export">
+        <button class="btn primary" id="exportBtn">Save video</button>
+        <div class="note" id="exportNote" style="text-align:center"></div>
+        <div class="spec">720 × 1280 · 9:16 · 30 fps</div>
+      </div>
+      <div class="saved" id="savedList"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ===================== Data and helpers ===================== */
+const $ = id => document.getElementById(id);
+const W = 720, H = 1280;
+const cv = $("cv"), ctx = cv.getContext("2d");
+const fmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60), r = Math.floor(s % 60); return `${m}:${String(r).padStart(2, "0")}`; };
+const fmtLong = s => { const h = Math.floor(s / 3600); return h ? `${h}:${fmt(s - h * 3600).padStart(5, "0")}` : fmt(s); };
+
+const PRESETS = {
+  bold:    { label: "Bold (yellow)", hl: "#FFE600", size: 74, per: 3, upper: true,  pop: true,  stroke: 10 },
+  hormozi: { label: "Hormozi (green)", hl: "#22C55E", size: 86, per: 2, upper: true, pop: true,  stroke: 11 },
+  beast:   { label: "Beast (red)",   hl: "#FF3B3B", size: 84, per: 2, upper: true,  pop: true,  stroke: 13 },
+  clean:   { label: "Clean",         hl: "#4ADE80", size: 58, per: 4, upper: false, pop: false, stroke: 8 },
+};
+document.querySelectorAll(".presets").forEach(sel =>
+  sel.innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join(""));
+
+const EXAMPLE_TRANSCRIPT = `0:00 Welcome back to the show. Today we're talking about money habits.
+0:06 Here's the secret nobody tells you about getting rich.
+0:11 Most people think you need a big salary. You actually don't.
+0:16 What you need is time in the market, and you need to start early.
+0:22 I realized this when I was twenty two and completely broke.
+0:27 So I started investing ten dollars a week. Just ten dollars.
+0:33 Everyone laughed at me. My friends thought it was pointless.
+0:38 Ten years later, that habit changed my life completely.
+0:44 And here's the crazy part. I never earned more than average.
+0:50 The biggest mistake you can make is waiting until you feel ready.
+0:56 You will never feel ready. Nobody does.
+1:01 Okay, let's talk about the second mistake, which is lifestyle creep.
+1:07 Every time you get a raise, your spending goes up with it.
+1:13 Why does that happen? Because we compare ourselves to everyone online.
+1:19 Stop doing that. Seriously, it's the fastest way to stay broke.
+1:25 Here's what I do instead. Every raise, half of it gets invested.
+1:31 You still feel the upgrade, but your future self gets paid too.
+1:37 That one rule is worth more than any stock tip you'll ever hear.
+1:43 Alright, let's take a quick break and then answer your questions.`;
+
+const EXAMPLE_CLIPS = [
+  { start: 6, end: 43.5, title: "The $10 habit that changed my life", hook: "Nobody tells you this about money", score: 94, reason: "Bold claim, personal story, clear payoff." },
+  { start: 50, end: 61, title: "You will never feel ready", hook: "The biggest money mistake", score: 88, reason: "Short, quotable, universal advice." },
+  { start: 61, end: 98.5, title: "Why every raise keeps you broke", hook: "Stop doing this with your raises", score: 85, reason: "Relatable problem with an actionable rule." },
+];
+
+const EXAMPLE_SCRIPT = `So last month my roommate Jake started acting weird. He was home all day, never left his room, and kept saying he was "between jobs." Then one night I come home and my PS5 is gone. Just gone. Jake swears someone broke in, but nothing else is missing. Not the TV, not my laptop. Only the PS5. Two days later I see it listed on Marketplace. Same scratch on the side. Same sticker. The seller's name? Jake's girlfriend. When I confronted him he said he needed rent money and planned to buy it back. So I told him to pack his things. Now his whole family is calling me heartless. So, am I the jerk?`;
+
+/* ===================== Transcript parsing ===================== */
+function toSec(ts) {
+  const p = ts.replace(",", ".").split(":").map(Number);
+  return p.reduce((a, v) => a * 60 + v, 0);
+}
+function parseTranscript(text) {
+  const segs = [];
+  const lines = text.replace(/\r/g, "").split("\n");
+  const cue = /(\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3}\s*-->\s*((\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3})/;
+  if (lines.some(l => cue.test(l))) {             // SRT / VTT
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3})/);
+      if (!m) continue;
+      const txt = [];
+      while (i + 1 < lines.length && lines[i + 1].trim() && !/-->/.test(lines[i + 1])) txt.push(lines[++i].trim());
+      const t = txt.join(" ").replace(/<[^>]+>/g, "").trim();
+      if (t) segs.push({ start: toSec(m[1]), end: toSec(m[2]), text: t });
+    }
+  } else {                                         // "0:12 text" or YouTube's "0:12\ntext"
+    let pending = null;
+    for (const raw of lines) {
+      const l = raw.trim(); if (!l) continue;
+      const m = l.match(/^\[?((?:\d{1,2}:)?\d{1,2}:\d{2})\]?\s*(.*)$/);
+      if (m) { pending = { start: toSec(m[1]), text: m[2] }; segs.push(pending); }
+      else if (pending) pending.text = (pending.text + " " + l).trim();
+    }
+    segs.forEach((s, i) => s.end = i + 1 < segs.length ? segs[i + 1].start : s.start + Math.max(2, s.text.split(/\s+/).length / 2.6));
+  }
+  return segs.filter(s => s.text && s.end > s.start);
+}
+/* Spread each segment's words across its time, weighted by word length. */
+function segmentWords(segs) {
+  const out = [];
+  for (const s of segs) {
+    const ws = s.text.split(/\s+/).filter(Boolean);
+    const weights = ws.map(w => 1 + w.length * 0.35 + (/[.!?]$/.test(w) ? 1.2 : /[,;:]$/.test(w) ? 0.6 : 0));
+    const total = weights.reduce((a, b) => a + b, 0), span = s.end - s.start;
+    let t = s.start;
+    ws.forEach((w, i) => { const d = span * weights[i] / total; out.push({ start: t, end: t + d * 0.92, text: w }); t += d; });
+  }
+  return out;
+}
+
+/* ===================== Captions on canvas ===================== */
+function pagesFor(words, per) {
+  const pages = []; let cur = [];
+  for (const w of words) {
+    if (cur.length && (cur.length >= per || w.start - cur[cur.length - 1].end > 0.6 || /[.!?,;:]$/.test(cur[cur.length - 1].text))) { pages.push(cur); cur = []; }
+    cur.push(w);
+  }
+  if (cur.length) pages.push(cur);
+  return pages;
+}
+function drawCaptions(pages, t, preset, yFrac) {
+  const p = PRESETS[preset];
+  let page = null;
+  for (let i = 0; i < pages.length; i++) {
+    const end = i + 1 < pages.length ? Math.min(pages[i + 1][0].start, pages[i].at(-1).end + 0.8) : pages[i].at(-1).end + 0.4;
+    if (t >= pages[i][0].start && t < end) { page = pages[i]; break; }
+  }
+  if (!page) return;
+  let size = p.size;
+  ctx.font = `900 ${size}px Inter, "Arial Black", sans-serif`;
+  const texts = page.map(w => p.upper ? w.text.toUpperCase() : w.text);
+  const space = size * 0.28;
+  let widths = texts.map(s => ctx.measureText(s).width);
+  let total = widths.reduce((a, b) => a + b, 0) + space * (texts.length - 1);
+  if (total > W * 0.88) { const k = W * 0.88 / total; size *= k; widths = widths.map(w => w * k); total *= k; }
+  ctx.font = `900 ${size}px Inter, "Arial Black", sans-serif`;
+  ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.lineJoin = "round";
+  let active = -1; page.forEach((w, i) => { if (t >= w.start) active = i; });
+  const grow = p.pop && active >= 0 ? widths[active] * 0.06 : 0;   // room for the enlarged word
+  let x = (W - total) / 2 - grow; const y = H * yFrac;
+  texts.forEach((s, i) => {
+    ctx.save();
+    const on = i === active, scale = on && p.pop ? 1.12 : 1;
+    if (on) x += grow;
+    ctx.translate(x + widths[i] / 2, y); ctx.scale(scale, scale);
+    ctx.lineWidth = p.stroke * size / p.size; ctx.strokeStyle = "#000";
+    ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowOffsetY = 4; ctx.shadowBlur = 6;
+    ctx.strokeText(s, -widths[i] / 2, 0);
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = on ? p.hl : "#fff";
+    ctx.fillText(s, -widths[i] / 2, 0);
+    ctx.restore();
+    x += widths[i] + space + (on ? grow : 0);
+  });
+}
+function drawTitle(text, t) {
+  if (!text || t > 3.2) return;
+  const a = Math.min(1, t / 0.15, (3.2 - t) / 0.3);
+  ctx.save(); ctx.globalAlpha = Math.max(0, a);
+  ctx.font = `700 46px Inter, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const lines = wrap(text, W * 0.78);
+  const lh = 58, padX = 34, padY = 22;
+  const bw = Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2, bh = lines.length * lh + padY * 2;
+  const bx = (W - bw) / 2, by = H * 0.13;
+  ctx.fillStyle = "#fff"; roundRect(bx, by, bw, bh, 22); ctx.fill();
+  ctx.fillStyle = "#111";
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, by + padY + lh * (i + 0.5)));
+  ctx.restore();
+}
+function wrap(text, max) {
+  const out = []; let line = "";
+  for (const w of text.split(/\s+/)) { const tryL = line ? line + " " + w : w; if (ctx.measureText(tryL).width > max && line) { out.push(line); line = w; } else line = tryL; }
+  if (line) out.push(line); return out.slice(0, 3);
+}
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+function drawGradient(t) {
+  const a = t * 0.25, cx = W / 2, cy = H / 2, r = H * 0.7;
+  const g = ctx.createLinearGradient(cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  g.addColorStop(0, "#1e1b4b"); g.addColorStop(0.5, "#7c3aed"); g.addColorStop(1, "#db2777");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function drawCover(el, vw, vh) {
+  const s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s;
+  ctx.drawImage(el, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+/* ===================== State ===================== */
+const S = {
+  mode: "clip",
+  clipVideo: null, clipVideoName: "", isExample: true,
+  segs: [], words: [], clips: EXAMPLE_CLIPS.slice(), sel: 0,
+  storyWords: [], storyDur: 30, bg: null, voice: null, music: null,
+  playing: false, clock0: 0, pausedAt: 0, exporting: false, speaking: false,
+};
+
+/* ===================== Auto-Clip ===================== */
+$("transcript").value = EXAMPLE_TRANSCRIPT;
+function refreshTranscript() {
+  S.segs = parseTranscript($("transcript").value);
+  S.words = segmentWords(S.segs);
+  const dur = S.segs.length ? S.segs.at(-1).end : 0;
+  $("segCount").textContent = S.segs.length ? `${S.segs.length} lines · ${fmtLong(dur)}` : "Couldn't read any timestamps yet";
+}
+$("transcript").addEventListener("input", () => { refreshTranscript(); });
+refreshTranscript();
+
+$("clipFile").onchange = e => loadClipVideo(e.target.files[0]);
+dropOn($("clipDrop"), f => loadClipVideo(f));
+function loadClipVideo(f) {
+  if (!f) return;
+  const v = document.createElement("video");
+  v.src = URL.createObjectURL(f); v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+  v.onloadedmetadata = () => { $("clipFileName").textContent = `${f.name} · ${fmtLong(v.duration)}`; pausePlayer(); draw(); };
+  v.onseeked = () => { if (!S.playing) draw(); };
+  v.onerror = () => { $("clipFileName").textContent = "This browser can't play that file. Try an MP4."; };
+  S.clipVideo = v; S.clipVideoName = f.name.replace(/\.[^.]+$/, "");
+}
+
+$("srtFile").onchange = async e => { const f = e.target.files[0]; if (f) { $("transcript").value = await f.text(); refreshTranscript(); } };
+
+function renderClipList() {
+  $("exampleTag").hidden = !S.isExample;
+  $("clipList").innerHTML = S.clips.map((c, i) => `
+    <button class="clip" aria-pressed="${i === S.sel}" data-i="${i}">
+      <div class="score">${Math.round(c.score)}<small>SCORE</small></div>
+      <div><h3>${esc(c.title)}</h3><p>${esc(c.reason)}</p></div>
+      <div class="tc">${fmtLong(c.start)}–${fmtLong(c.end)}<br>${Math.round(c.end - c.start)}s</div>
+    </button>`).join("") || `<p class="note">No clips yet.</p>`;
+  document.querySelectorAll(".clip").forEach(b => b.onclick = () => { S.sel = +b.dataset.i; renderClipList(); pausePlayer(true); draw(); });
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function clipOpts() {
+  const n = Math.max(1, Math.min(10, +$("numClips").value || 4));
+  let lo = +$("minLen").value || 15, hi = +$("maxLen").value || 60;
+  if (lo >= hi) hi = lo + 10;
+  return { n, lo, hi };
+}
+/* Snap to word edges so clips don't start or stop mid-word, and enforce length. */
+function snapClip(c, lo, hi) {
+  const ws = S.words; if (!ws.length) return c;
+  let s = ws.reduce((b, w) => Math.abs(w.start - c.start) < Math.abs(b - c.start) ? w.start : b, ws[0].start);
+  let e = ws.filter(w => w.end > s).reduce((b, w) => Math.abs(w.end - c.end) < Math.abs(b - c.end) ? w.end : b, ws.at(-1).end);
+  if (e - s > hi) e = Math.max(...ws.filter(w => w.end > s && w.end <= s + hi).map(w => w.end), s + hi);
+  if (e - s < lo) e = Math.min(s + lo, ws.at(-1).end);
+  return { ...c, start: Math.max(0, s - 0.15), end: e + 0.25 };
+}
+
+const HOOK = /\b(secret|never|always|nobody|everyone|biggest|worst|best|mistake|crazy|insane|actually|truth|why|how|imagine|money|million|stop|you should|here's|problem|realized|changed my life)\b/gi;
+function quickPick() {
+  const { n, lo, hi } = clipOpts(), segs = S.segs, target = (lo + hi) / 2, cands = [];
+  for (let i = 0; i < segs.length; i++) {
+    let j = i; const text = [];
+    while (j < segs.length && segs[j].end - segs[i].start < target) text.push(segs[j++].text);
+    const end = segs[Math.min(j, segs.length - 1)].end;
+    if (end - segs[i].start < lo) continue;
+    const body = text.join(" "), dur = end - segs[i].start;
+    const score = Math.min(97, Math.round(body.split(/\s+/).length / dur * 12 + (body.match(HOOK) || []).length * 6
+      + (HOOK.test(segs[i].text) || /\?$/.test(segs[i].text) ? 15 : 0) + (body.match(/\?/g) || []).length * 3 + (body.match(/!/g) || []).length * 4));
+    HOOK.lastIndex = 0;
+    cands.push({ start: segs[i].start, end, score, title: segs[i].text.split(/\s+/).slice(0, 8).join(" "), hook: segs[i].text.split(/\s+/).slice(0, 7).join(" "), reason: "Fast pace and hook words (quick pick, no AI)" });
+  }
+  cands.sort((a, b) => b.score - a.score);
+  const picked = [];
+  for (const c of cands) { if (!picked.some(p => c.start < p.end && c.end > p.start)) picked.push(c); if (picked.length === n) break; }
+  return picked.map(c => snapClip(c, lo, hi));
+}
+$("quickBtn").onclick = () => {
+  if (!S.segs.length) return note("findNote", "Add a transcript with timestamps first.", "err");
+  S.clips = quickPick(); S.sel = 0; S.isExample = false; renderClipList(); pausePlayer(true); draw();
+  note("findNote", `${S.clips.length} clips picked.`, "ok");
+};
+
+let sample = null, downloads = null;
+$("findBtn").onclick = async () => {
+  if (!S.segs.length) return note("findNote", "Add a transcript with timestamps first.", "err");
+  if (!sample) return note("findNote", "Claude isn't available in this view. Use Quick pick instead.", "err");
+  const { n, lo, hi } = clipOpts(), extra = $("clipPrompt").value.trim();
+  const btn = $("findBtn"); btn.disabled = true; note("findNote", "Claude is watching… this can take up to a minute.");
+  const prompt = `You are an expert short-form video editor who has cut thousands of viral TikToks, Reels and YouTube Shorts.
+
+Below is a timestamped transcript of a long video. Find the ${n} best moments to post as standalone vertical shorts.
+
+Rules:
+- Each clip must be between ${lo} and ${hi} seconds long.
+- Each clip must make sense on its own: start at the beginning of a thought and end on a payoff, punchline or conclusion, never mid-sentence.
+- Prefer a strong hook in the first 3 seconds: a bold claim, surprising fact, question, conflict, emotion, story, or useful advice.
+- Clips must not overlap. Use the transcript's timestamps (seconds).
+${extra ? `- Extra instructions from the creator: ${extra}\n` : ""}
+Reply with ONLY JSON in this shape, best clip first:
+{"clips":[{"start":12.0,"end":48.5,"title":"catchy title, max 8 words","hook":"on-screen hook text, max 8 words","score":0-100,"reason":"one sentence on why it will perform"}]}
+
+Transcript:
+${S.segs.map(s => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`).join("\n")}`;
+  try {
+    const data = await sample.json(prompt);
+    const dur = S.segs.at(-1).end;
+    const clips = (data?.clips || []).filter(c => isFinite(c.start) && isFinite(c.end) && c.end > c.start && c.start < dur)
+      .map(c => snapClip({ start: +c.start, end: Math.min(+c.end, dur), title: String(c.title || "Clip"), hook: String(c.hook || ""), score: +c.score || 0, reason: String(c.reason || "") }, lo, hi))
+      .sort((a, b) => b.score - a.score).slice(0, n);
+    if (!clips.length) throw { code: "empty" };
+    S.clips = clips; S.sel = 0; S.isExample = false; renderClipList(); pausePlayer(true); draw();
+    note("findNote", `Claude found ${clips.length} clips.`, "ok");
+  } catch (e) {
+    const msg = { not_granted: "Claude wasn't allowed to run. Use Quick pick instead.", rate_limited: "Too many requests right now. Wait a moment and try again.",
+                  empty: "Claude didn't return usable clips. Try again or use Quick pick." }[e?.code] || "Couldn't reach Claude. Try again, or use Quick pick.";
+    note("findNote", msg, "err");
+  } finally { btn.disabled = false; }
+};
+
+function currentClip() { return S.clips[S.sel]; }
+function clipWords(c) {
+  return S.words.filter(w => w.end > c.start && w.start < c.end).map(w => ({ start: Math.max(w.start, c.start) - c.start, end: Math.min(w.end, c.end) - c.start, text: w.text }));
+}
+
+/* ===================== Story ===================== */
+$("script").value = EXAMPLE_SCRIPT;
+function refreshStory() {
+  const ws = $("script").value.split(/\s+/).filter(Boolean);
+  const weights = ws.map(w => 0.22 + w.length * 0.045 + (/[.!?]["”]?$/.test(w) ? 0.3 : /[,;:]$/.test(w) ? 0.14 : 0));
+  let total = weights.reduce((a, b) => a + b, 0) + 0.4;
+  const k = S.voice && isFinite(S.voice.duration) && S.voice.duration > 0 ? (S.voice.duration - 0.3) / total : 1;
+  let t = 0.2; S.storyWords = ws.map((w, i) => { const d = weights[i] * k; const o = { start: t, end: t + d * 0.9, text: w }; t += d; return o; });
+  S.storyDur = Math.max(2, (S.voice && isFinite(S.voice.duration)) ? S.voice.duration : t + 0.4);
+  $("wordCount").textContent = `${ws.length} words · about ${Math.round(S.storyDur)}s`;
+}
+$("script").addEventListener("input", () => { pausePlayer(true); refreshStory(); draw(); });
+$("storyTitle").addEventListener("input", draw);
+refreshStory();
+
+function mediaInput(fileId, dropId, nameId, kind, onload) {
+  const take = f => {
+    if (!f) return;
+    const el = document.createElement(kind); el.src = URL.createObjectURL(f); el.preload = "auto";
+    if (kind === "video") { el.muted = true; el.loop = true; el.playsInline = true; }
+    el.onloadedmetadata = () => { $(nameId).textContent = f.name; onload(el); };
+    el.onerror = () => { $(nameId).textContent = "Can't play that file here"; };
+  };
+  $(fileId).onchange = e => take(e.target.files[0]);
+  dropOn($(dropId), take);
+}
+mediaInput("bgFile", "bgDrop", "bgName", "video", el => { S.bg = el; el.onseeked = () => !S.playing && draw(); el.currentTime = 0.1; });
+mediaInput("voiceFile", "voiceDrop", "voiceName", "audio", el => { S.voice = el; pausePlayer(true); refreshStory(); draw(); });
+mediaInput("musicFile", "musicDrop", "musicName", "audio", el => { el.loop = true; el.volume = 0.15; S.music = el; });
+
+let writeCtl = null;
+$("writeBtn").onclick = async () => {
+  if (!sample) return note("writeNote", "Claude isn't available in this view. Paste your own script below.", "err");
+  const topic = $("topic").value.trim(); if (!topic) return note("writeNote", "Type a topic first.", "err");
+  const secs = Math.max(15, Math.min(120, +$("seconds").value || 45));
+  writeCtl = new AbortController(); $("writeBtn").disabled = true; $("stopWrite").hidden = false;
+  note("writeNote", "Thinking…"); pausePlayer(true);
+  const prompt = `Write the voiceover script for a ${secs}-second vertical short video.
+
+Style: ${$("style").value}
+Topic: ${topic}
+
+Requirements:
+- The first sentence is a scroll-stopping hook.
+- Short punchy sentences, conversational, easy to read aloud.
+- About ${Math.round(secs * 2.6)} words in total.
+- End with a payoff or twist, not a call to subscribe.
+- Output ONLY the words to be spoken: no title, stage directions, emojis, hashtags or quotes.`;
+  try {
+    const { text } = await sample(prompt, { signal: writeCtl.signal, cache: false,
+      onText: ({ text }) => { $("script").value = text; refreshStory(); note("writeNote", "Writing…"); } });
+    $("script").value = text.trim(); refreshStory(); draw();
+    note("writeNote", "Script ready. Edit anything you like.", "ok");
+  } catch (e) {
+    if (e?.text) $("script").value = e.text;
+    refreshStory(); draw();
+    if (e?.code !== "cancelled") note("writeNote", e?.code === "not_granted" ? "Claude wasn't allowed to run. Paste your own script below." : e?.code === "refused" ? "Claude declined that topic. Try a different one." : "Couldn't finish the script. Try again.", "err");
+    else note("writeNote", "Stopped.");
+  } finally { $("writeBtn").disabled = false; $("stopWrite").hidden = true; }
+};
+$("stopWrite").onclick = () => writeCtl?.abort();
+
+/* AI voice preview (Web Speech). It drives the caption clock while speaking. */
+const synth = window.speechSynthesis;
+function loadVoices() {
+  if (!synth) { $("ttsVoice").innerHTML = `<option value="">Not available in this browser</option>`; return; }
+  const vs = synth.getVoices().filter(v => /^en/i.test(v.lang));
+  $("ttsVoice").innerHTML = `<option value="">Off</option>` + vs.map((v, i) => `<option value="${esc(v.name)}" ${i === 0 ? "selected" : ""}>${esc(v.name.replace(/Microsoft |Google /, ""))} · ${v.lang}</option>`).join("");
+}
+loadVoices(); if (synth) synth.onvoiceschanged = loadVoices;
+
+/* ===================== Player ===================== */
+function duration() {
+  if (S.mode === "story") return S.storyDur;
+  const c = currentClip(); return c ? c.end - c.start : 0;
+}
+function now() {
+  if (S.mode === "clip" && S.clipVideo && currentClip()) return S.clipVideo.currentTime - currentClip().start;
+  if (S.mode === "story" && S.voice && !S.speaking) return S.voice.currentTime;
+  return S.playing ? (performance.now() - S.clock0) / 1000 : S.pausedAt;
+}
+function draw() {
+  const t = Math.max(0, now());
+  ctx.clearRect(0, 0, W, H);
+  if (S.mode === "clip") {
+    const c = currentClip(), v = S.clipVideo;
+    if (v && v.readyState >= 2) {
+      const vw = v.videoWidth, vh = v.videoHeight;
+      if ($("layout").value === "fit" || vw / vh <= W / H) {
+        ctx.save(); ctx.filter = "blur(28px) brightness(0.8)"; drawCover(v, vw, vh); ctx.restore();
+        const dh = vh * W / vw; ctx.drawImage(v, 0, (H - dh) / 2, W, dh);
+      } else {
+        const cw = vh * W / H, cx = Math.max(0, Math.min(vw - cw, vw * +$("framePos").value - cw / 2));
+        ctx.drawImage(v, cx, 0, cw, vh, 0, 0, W, H);
+      }
+    } else {
+      drawGradient(t);
+      ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.font = `500 26px "DM Sans", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(S.clipVideo ? "Loading video…" : "Example preview · add your video in step 01", W / 2, H * 0.9);
+    }
+    if (c) {
+      if ($("clipCaptions").checked) drawCaptions(pagesFor(clipWords(c), PRESETS[$("clipPreset").value].per), t, $("clipPreset").value, 0.68);
+      if ($("clipHook").checked) drawTitle(c.hook, t);
+    }
+  } else {
+    if (S.bg && S.bg.readyState >= 2) drawCover(S.bg, S.bg.videoWidth, S.bg.videoHeight); else drawGradient(t);
+    drawCaptions(pagesFor(S.storyWords, PRESETS[$("storyPreset").value].per), t, $("storyPreset").value, 0.5);
+    drawTitle($("storyTitle").value.trim(), t);
+  }
+  const d = duration();
+  $("barFill").style.width = `${d ? Math.min(100, t / d * 100) : 0}%`;
+  $("timeLbl").textContent = `${fmt(Math.min(t, d))} / ${fmt(d)}`;
+}
+let raf = 0;
+function loop() {
+  draw();
+  const v = S.mode === "clip" ? S.clipVideo : null;
+  if (S.playing && (now() >= duration() || (v && v.ended))) { stopAt(); return; }
+  if (S.playing) raf = requestAnimationFrame(loop);
+}
+function storyMedia() { return [S.bg, S.music, S.speaking ? null : S.voice].filter(Boolean); }
+async function playPlayer() {
+  if (S.playing) return;
+  const d = duration(); if (!d) return;
+  let t = Math.max(0, now()); if (t >= d - 0.05) t = 0;
+  S.playing = true; $("playBtn").textContent = "❚❚ Pause";
+  if (S.mode === "clip" && S.clipVideo) {
+    S.clipVideo.currentTime = currentClip().start + t;
+    await S.clipVideo.play().catch(() => {});
+  } else {
+    S.clock0 = performance.now() - t * 1000;
+    if (S.mode === "story") {
+      if (S.bg) S.bg.play().catch(() => {});
+      if (S.music) S.music.play().catch(() => {});
+      if (S.voice) { S.voice.currentTime = t; S.voice.play().catch(() => {}); }
+      else if (synth && $("ttsVoice").value && !S.exporting && t < 0.5) speak();
+    }
+  }
+  raf = requestAnimationFrame(loop);
+}
+function speak() {
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance($("script").value);
+  u.voice = synth.getVoices().find(v => v.name === $("ttsVoice").value) || null; u.rate = 1.05;
+  const starts = []; let pos = 0;
+  for (const w of S.storyWords) { pos = $("script").value.indexOf(w.text, pos); starts.push(pos); pos += w.text.length; }
+  u.onboundary = e => {
+    if (e.name !== "word" || !S.playing) return;
+    let i = starts.findIndex(s => s > e.charIndex); i = i === -1 ? starts.length - 1 : Math.max(0, i - 1);
+    S.clock0 = performance.now() - S.storyWords[i].start * 1000;   // keep captions on the spoken word
+  };
+  u.onend = () => { S.speaking = false; };
+  S.speaking = true; synth.speak(u);
+}
+function pausePlayer(reset = false) {
+  if (S.playing) S.pausedAt = Math.max(0, now());
+  S.playing = false; cancelAnimationFrame(raf); $("playBtn").textContent = "▶ Play";
+  S.clipVideo?.pause(); S.bg?.pause(); S.music?.pause(); S.voice?.pause();
+  if (synth) { synth.cancel(); S.speaking = false; }
+  if (reset) {
+    S.pausedAt = 0;
+    if (S.mode === "clip" && S.clipVideo && currentClip()) S.clipVideo.currentTime = currentClip().start;
+    if (S.voice) S.voice.currentTime = 0;
+  }
+}
+function stopAt() { pausePlayer(true); draw(); }
+$("playBtn").onclick = () => S.playing ? (pausePlayer(), draw()) : playPlayer();
+["layout", "framePos", "clipPreset", "clipCaptions", "clipHook", "storyPreset"].forEach(id => $(id).addEventListener("input", () => !S.playing && draw()));
+
+/* ===================== Export (record the canvas in real time) ===================== */
+let audioCtx = null, audioDest = null; const hooked = new WeakSet();
+function routeAudio(el) {
+  if (!el || hooked.has(el)) return;
+  audioCtx ??= new AudioContext(); audioDest ??= audioCtx.createMediaStreamDestination();
+  const src = audioCtx.createMediaElementSource(el); src.connect(audioDest); src.connect(audioCtx.destination); hooked.add(el);
+}
+function pickMime() {
+  for (const m of ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"])
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  return "";
+}
+const saved = [];
+$("exportBtn").onclick = async () => {
+  if (S.exporting) return;
+  if (!window.MediaRecorder || !cv.captureStream) return note("exportNote", "This browser can't record video. Try Chrome, Edge or Safari.", "err");
+  if (S.mode === "clip" && !S.clipVideo) return note("exportNote", "Add your video in step 01 first. The example has no footage to save.", "err");
+  if (S.mode === "clip" && !currentClip()) return note("exportNote", "Pick a clip first.", "err");
+  if (S.mode === "clip" && currentClip().start >= S.clipVideo.duration - 1)
+    return note("exportNote", `This clip starts at ${fmtLong(currentClip().start)}, after your video ends (${fmtLong(S.clipVideo.duration)}). Check the transcript belongs to this video.`, "err");
+  pausePlayer(true);
+  if (synth) synth.cancel();
+  S.exporting = true; $("exportBtn").disabled = true;
+  const media = S.mode === "clip" ? [S.clipVideo] : [S.music, S.voice];
+  try { media.forEach(routeAudio); await audioCtx?.resume(); } catch { /* recording without sound still works */ }
+  const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(audioDest ? audioDest.stream.getAudioTracks() : [])]);
+  const mime = pickMime(), rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const done = new Promise(r => rec.onstop = r);
+  const d = duration();
+  note("exportNote", `Recording ${Math.round(d)}s in real time. Keep this tab open.`);
+  rec.start(500);
+  await playPlayer();
+  await new Promise(r => { const tick = () => { if (!S.playing) return r(); setTimeout(tick, 200); }; tick(); });
+  rec.stop(); await done;
+  S.exporting = false; $("exportBtn").disabled = false;
+  const ext = (rec.mimeType || mime).includes("mp4") ? "mp4" : "webm";
+  const blob = new Blob(chunks, { type: rec.mimeType || mime });
+  const base = S.mode === "clip" ? `${S.clipVideoName || "clip"}-${slug(currentClip().title)}` : `story-${slug($("storyTitle").value || $("script").value.slice(0, 40))}`;
+  const item = { name: `${base}.${ext}`, blob };
+  saved.unshift(item); renderSaved();
+  await saveItem(item);
+};
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "video"; }
+async function saveItem(item) {
+  if (downloads) {
+    try { await downloads.save({ filename: item.name, data: item.blob }); note("exportNote", `Saved ${item.name}`, "ok"); }
+    catch (e) { note("exportNote", e?.code === "declined" ? "Not saved. Use the button below to save it later." : "Couldn't save the file here. Try again from the list below.", "err"); }
+  } else if (!window.claude) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(item.blob); a.download = item.name; a.click();
+    note("exportNote", `Saved ${item.name}`, "ok");
+  } else note("exportNote", "Saving files isn't available in this view. Open the page in claude.ai to save.", "err");
+}
+function renderSaved() {
+  $("savedList").innerHTML = saved.map((s, i) => `<button class="btn" data-i="${i}"><span>${esc(s.name)}</span><span>${(s.blob.size / 1e6).toFixed(1)} MB ↓</span></button>`).join("");
+  $("savedList").querySelectorAll("button").forEach(b => b.onclick = () => saveItem(saved[+b.dataset.i]));
+}
+
+/* ===================== Routing, misc ===================== */
+function note(id, msg, kind = "") { const el = $(id); el.textContent = msg; el.className = `note ${kind}`; }
+function dropOn(el, fn) {
+  el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("over"); });
+  el.addEventListener("dragleave", () => el.classList.remove("over"));
+  el.addEventListener("drop", e => { e.preventDefault(); el.classList.remove("over"); fn(e.dataTransfer.files[0]); });
+}
+function route() {
+  const mode = location.hash === "#story" ? "story" : "clip";
+  if (mode !== S.mode) pausePlayer(true);
+  S.mode = mode;
+  $("view-clip").hidden = mode !== "clip"; $("view-story").hidden = mode !== "story";
+  $("tab-clip").removeAttribute("aria-current"); $("tab-story").removeAttribute("aria-current");
+  $(`tab-${mode}`).setAttribute("aria-current", "page");
+  $("exportBtn").textContent = mode === "clip" ? "Save this clip" : "Save story video";
+  note("exportNote", "");
+  draw();
+}
+addEventListener("hashchange", route);
+renderClipList(); route();
+// Caption fonts are only used on the canvas, so ask for them explicitly.
+Promise.all(["900 74px Inter", "700 46px Inter"].map(f => document.fonts?.load(f))).then(draw, draw);
+
+(async () => {
+  if (!window.claude) return;
+  try { sample = await claude.use("sample"); } catch { sample = null; }
+  try { downloads = await claude.use("downloads"); } catch { downloads = null; }
+  if (!sample) { $("findBtn").disabled = true; $("writeBtn").disabled = true; note("findNote", "Claude isn't available in this view. Quick pick still works."); }
+})();
+</script>

@@ -49,6 +49,9 @@ def write_script(topic: str, style: str = "reddit", seconds: int = 60) -> str:
     """Have Claude write a narration script for `topic`."""
     import anthropic
 
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+        raise RuntimeError("AI script writing needs an Anthropic API key (set ANTHROPIC_API_KEY). "
+                           "Or paste your own script instead of a topic.")
     client = anthropic.Anthropic()
     response = client.beta.messages.create(
         model=MODEL,
@@ -83,7 +86,11 @@ async def _tts(text: str, voice: str, rate: str, out: Path) -> list[Word]:
 def synthesize(text: str, out: Path, voice: str = "en-US-AndrewMultilingualNeural",
                rate: str = "+10%") -> list[Word]:
     """Text -> MP3 at `out`, returning per-word timings for captions."""
-    words = asyncio.run(_tts(text, voice, rate, out))
+    try:
+        words = asyncio.run(_tts(text, voice, rate, out))
+    except OSError as e:  # aiohttp connection errors subclass OSError
+        raise RuntimeError("Couldn't reach the AI voice service. Check your internet connection "
+                           "and try again.") from e
     if not out.exists() or out.stat().st_size == 0:
         raise RuntimeError("Text-to-speech produced no audio (is the machine online?)")
     if not words:

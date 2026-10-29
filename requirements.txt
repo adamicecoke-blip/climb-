@@ -1,0 +1,8 @@
+anthropic>=2.3.0
+faster-whisper>=1.0
+edge-tts>=7.0
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+opencv-python-headless>=4.9,<5
+yt-dlp>=2024.1.1

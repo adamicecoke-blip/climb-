@@ -24,7 +24,7 @@ Installers are built automatically by GitHub (see `.github/workflows/build-apps.
 1. Open the repository on GitHub, go to **Actions**, then **Build apps**, then **Run workflow**. Or push a tag such as `v0.3.0`, which also creates a Release with the files attached.
 2. When it finishes, about 15 minutes later, download your file from the run's **Artifacts** section:
    - **Windows:** `ClipForge-Windows-Setup.exe`. Run it; it adds Start-menu and desktop shortcuts.
-   - **Mac:** `ClipForge-Mac.dmg`. Drag ClipForge into Applications. The app isn't signed, so the first time, right-click it and choose **Open**. ffmpeg inside is an Intel build, which Macs with Apple chips run through Rosetta; macOS offers to install Rosetta if it's missing.
+   - **Mac:** `ClipForge-Mac.dmg`. Drag ClipForge into Applications. The app isn't signed, so the first time, right-click it and choose **Open**. This build is for Macs with Apple chips (M1 or newer).
    - **Linux:** `ClipForge-Linux.tar.gz`. Unpack it and run `ClipForge/ClipForge`.
 
 The installed app keeps your videos in a `ClipForge` folder in your home folder. Put gameplay clips for story videos in `ClipForge/backgrounds`. The first transcription downloads the speech-to-text model (about 500 MB) once.

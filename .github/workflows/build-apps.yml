@@ -49,10 +49,12 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p packaging/ffmpeg
+          # Static Apple-silicon builds (with libass for captions) from ffmpeg.martin-riedl.de
           for tool in ffmpeg ffprobe; do
-            curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/$tool/zip" -o "$tool.zip"
+            curl -fsSL --retry 3 "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/$tool.zip" -o "$tool.zip"
             unzip -o "$tool.zip" -d packaging/ffmpeg
           done
+          file packaging/ffmpeg/*
           chmod +x packaging/ffmpeg/*
 
       - name: Fetch ffmpeg (Linux)

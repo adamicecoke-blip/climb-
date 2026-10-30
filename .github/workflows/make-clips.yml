@@ -59,7 +59,12 @@ jobs:
         env:
           URL: ${{ inputs.url }}
           PROMPT: ${{ inputs.prompt }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
+          if [ -n "$YT_COOKIES" ]; then
+            printf '%s\n' "$YT_COOKIES" > "$RUNNER_TEMP/cookies.txt"
+            export CLIPFORGE_COOKIES="$RUNNER_TEMP/cookies.txt"
+          fi
           python -m clipforge clip "$URL" -o out \
             -n "${{ inputs.num_clips }}" --min "${{ inputs.min_len }}" --max "${{ inputs.max_len }}" \
             --captions "${{ inputs.captions }}" --layout "${{ inputs.layout }}" --prompt "$PROMPT"

@@ -76,6 +76,12 @@ def extract_audio(src: Path, dst: Path) -> Path:
     return dst
 
 
+# YouTube often blocks data-centre servers ("confirm you're not a bot"). Retrying as
+# other YouTube apps sometimes gets through; a cookies file from a signed-in
+# browser (CLIPFORGE_COOKIES) reliably does.
+_YT_CLIENTS = [None, "tv", "web_safari,mweb", "android_vr", "ios"]
+
+
 def download(url: str, dest_dir: Path) -> Path:
     """Download a video from YouTube/TikTok/etc. with yt-dlp."""
     try:
@@ -83,16 +89,36 @@ def download(url: str, dest_dir: Path) -> Path:
     except ImportError as e:
         raise MediaError("yt-dlp is not installed (pip install yt-dlp)") from e
     dest_dir.mkdir(parents=True, exist_ok=True)
-    opts = {
+    base = {
         "outtmpl": str(dest_dir / "%(id)s.%(ext)s"),
         "format": "bv*[height<=1080]+ba/b[height<=1080]/b",
         "merge_output_format": "mp4",
         "quiet": True,
         "noprogress": True,
     }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        path = Path(ydl.prepare_filename(info)).with_suffix(".mp4")
+    cookies = os.environ.get("CLIPFORGE_COOKIES")
+    if cookies and Path(cookies).is_file():
+        base["cookiefile"] = cookies
+    is_youtube = "youtu" in url
+    last_error: Exception | None = None
+    for client in (_YT_CLIENTS if is_youtube else [None]):
+        opts = dict(base)
+        if client:
+            opts["extractor_args"] = {"youtube": {"player_client": client.split(",")}}
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                path = Path(ydl.prepare_filename(info)).with_suffix(".mp4")
+            break
+        except yt_dlp.utils.DownloadError as e:
+            last_error = e
+            if not is_youtube or "not a bot" not in str(e) and "Sign in" not in str(e):
+                raise MediaError(f"Couldn't download {url}: {e}") from e
+    else:
+        raise MediaError(
+            "YouTube blocked the download from this server (it asks to confirm you're not a bot). "
+            "Add your YouTube cookies (see the README), or download the video yourself and upload the file."
+        ) from last_error
     if not path.exists():
         matches = sorted(dest_dir.glob(f"{info['id']}.*"))
         if not matches:

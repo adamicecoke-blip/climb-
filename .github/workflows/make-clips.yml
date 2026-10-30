@@ -1,0 +1,93 @@
+# Paste a video link, get clips. Run it from the Actions tab: "Make clips" -> "Run workflow".
+# The finished clips appear under "Artifacts" on the run page (and in the run summary).
+name: Make clips
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Video link (YouTube, TikTok, Twitch VOD, ...)"
+        required: true
+      num_clips:
+        description: "How many clips"
+        default: "5"
+      min_len:
+        description: "Shortest clip (seconds)"
+        default: "20"
+      max_len:
+        description: "Longest clip (seconds)"
+        default: "60"
+      prompt:
+        description: "Instructions for the AI (optional), e.g. only the funniest moments"
+        default: ""
+      captions:
+        description: "Caption style"
+        type: choice
+        options: [bold, hormozi, beast, clean]
+        default: bold
+      layout:
+        description: "crop = fill the screen around the speaker, fit = whole frame over a blurred background"
+        type: choice
+        options: [crop, fit]
+        default: crop
+
+jobs:
+  clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLIPFORGE_WHISPER: small
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q -r requirements.txt
+          pip install -q -U yt-dlp
+      - name: Reuse the speech-to-text model between runs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-small
+
+      - name: Make clips
+        env:
+          URL: ${{ inputs.url }}
+          PROMPT: ${{ inputs.prompt }}
+        run: |
+          python -m clipforge clip "$URL" -o out \
+            -n "${{ inputs.num_clips }}" --min "${{ inputs.min_len }}" --max "${{ inputs.max_len }}" \
+            --captions "${{ inputs.captions }}" --layout "${{ inputs.layout }}" --prompt "$PROMPT"
+
+      - name: Summary
+        if: always()
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, pathlib
+          m = pathlib.Path("out/clips.json")
+          if not m.exists():
+              print("## No clips were made\nOpen the **Make clips** step above to see why.")
+              raise SystemExit
+          data = json.loads(m.read_text())
+          print(f"## {len(data['clips'])} clips ready\n")
+          print("Download them from **Artifacts** at the bottom of this page.\n")
+          if not os.environ.get("ANTHROPIC_API_KEY"):
+              print("> Clips were picked without AI. Add an `ANTHROPIC_API_KEY` repository secret to let Claude pick them.\n")
+          print("| Score | Title | Length | File |\n|---|---|---|---|")
+          for c in data["clips"]:
+              print(f"| {c['score']} | {c['title']} | {c['duration']:.0f}s | `{c['video']}` |")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clips
+          path: |
+            out/*.mp4
+            out/clips.json
+          if-no-files-found: error
+          retention-days: 30
